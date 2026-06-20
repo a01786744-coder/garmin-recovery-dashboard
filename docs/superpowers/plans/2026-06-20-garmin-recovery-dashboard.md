@@ -6,7 +6,7 @@
 
 **Architecture:** A single Python backend process runs a 30-minute sync loop (Garmin → normalized SQLite) and serves a local Flask API. A React + Tailwind SPA reads cached data from that API. Electron wraps the SPA and manages the Python child process.
 
-**Tech Stack:** Python 3.11 (`garminconnect` 0.3.6, Flask, python-dotenv, pytest), SQLite (stdlib `sqlite3`), React + Tailwind (Vite), Electron, Node 24.
+**Tech Stack:** Python 3.11 (`garminconnect` 0.3.2 — newest release supporting Python 3.11; 0.3.3+ requires 3.12; Flask, python-dotenv, pytest), SQLite (stdlib `sqlite3`), React + Tailwind (Vite), Electron, Node 24.
 
 ## Global Constraints
 
@@ -93,7 +93,7 @@ GARMIN_PASSWORD=your-password
 - [ ] **Step 3: Write `backend/requirements.txt`**
 
 ```text
-garminconnect==0.3.6
+garminconnect==0.3.2
 Flask==3.0.3
 python-dotenv==1.0.1
 pytest==8.2.0
