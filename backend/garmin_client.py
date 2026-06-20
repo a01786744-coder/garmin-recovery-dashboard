@@ -85,15 +85,37 @@ class GarminClient:
             raise RuntimeError("login() must be called first")
         return self._api
 
+    # --- replace the existing _safe with this error-counting version ---
     def _safe(self, fn, default=None):
-        """Call a library getter; on any error return default (never raise)."""
+        """Call a library getter; on any error return default (never raise),
+        and record that an error occurred for last_fetch_had_errors."""
         try:
             return fn()
         except Exception as e:  # library raises varied types on missing data
+            self._fetch_errors = getattr(self, "_fetch_errors", 0) + 1
             log.warning("metric fetch failed: %s", type(e).__name__)
             return default
 
+    @property
+    def last_fetch_had_errors(self):
+        return getattr(self, "_fetch_errors", 0) > 0
+
+    def fetch_baseline(self, date_str):
+        """Lightweight pull for backfilling history cheaply: HRV + RHR only
+        (2 calls), so a 30-day backfill stays within Garmin's rate limits."""
+        self._fetch_errors = 0
+        api = self.api
+        summary = self._safe(lambda: api.get_user_summary(date_str), {}) or {}
+        hrv = self._safe(lambda: api.get_hrv_data(date_str), None)
+        hrv_sum = (hrv or {}).get("hrvSummary", {}) if hrv else {}
+        return {
+            "hrv_last_night": hrv_sum.get("lastNightAvg"),
+            "hrv_status": hrv_sum.get("status"),
+            "rhr": summary.get("restingHeartRate"),
+        }
+
     def fetch_day(self, date_str):
+        self._fetch_errors = 0
         api = self.api
         summary = self._safe(lambda: api.get_user_summary(date_str), {}) or {}
         sleep = self._safe(lambda: api.get_sleep_data(date_str), {}) or {}

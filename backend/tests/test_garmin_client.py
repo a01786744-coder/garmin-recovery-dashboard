@@ -102,3 +102,21 @@ def test_fetch_activities_tolerates_nulls_and_missing_fields():
     assert acts[1]["activity_id"] == 2
     assert acts[1]["type"] is None        # missing field → None, no crash
     assert acts[2]["activity_id"] is None # null entry handled
+
+def test_last_fetch_had_errors_tracks_exceptions():
+    api = MagicMock()
+    api.get_user_summary.return_value = {"restingHeartRate": 50}
+    api.get_hrv_data.return_value = {"hrvSummary": {"lastNightAvg": 40, "status": "BALANCED"}}
+    c = _client_with_api(api)
+    base = c.fetch_baseline("2026-06-19")
+    assert base == {"hrv_last_night": 40, "hrv_status": "BALANCED", "rhr": 50}
+    assert c.last_fetch_had_errors is False
+
+def test_last_fetch_had_errors_true_on_transport_error():
+    api = MagicMock()
+    api.get_user_summary.side_effect = ConnectionError("429")   # transport error
+    api.get_hrv_data.return_value = None
+    c = _client_with_api(api)
+    base = c.fetch_baseline("2026-06-19")
+    assert base["rhr"] is None
+    assert c.last_fetch_had_errors is True                       # vs genuine empty
