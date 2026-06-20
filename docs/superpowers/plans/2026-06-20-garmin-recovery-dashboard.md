@@ -700,7 +700,7 @@ git commit -m "feat: add custom recovery and strain formulas with tests"
 - Test: `backend/tests/test_db.py`
 
 **Interfaces:**
-- Produces: `init_db(path)`; `upsert_daily(path, date, metrics, recovery, strain)`; `upsert_activities(path, activities)`; `get_daily(path, date) -> dict | None`; `get_trends(path, days) -> list[dict]` (ascending date); `get_history(path, field, days) -> list[float|None]`; `get_recent_activities(path, limit) -> list[dict]`; `write_sync_log(path, status, message, availability)`; `get_last_sync(path) -> dict | None`.
+- Produces: `init_db(path)`; `upsert_daily(path, date, metrics, recovery, strain)`; `upsert_activities(path, activities)`; `get_daily(path, date) -> dict | None`; `get_trends(path, days) -> list[dict]` (ascending date); `get_history(path, field, days) -> list[float|None]`; `get_history_before(path, field, before_date, days) -> list[float|None]` (the `days` rows with `date < before_date`, ascending — used to build a recovery baseline excluding the target day); `get_existing_dates(path, days) -> set[str]` (date strings present among the most recent `days` rows — used to skip already-backfilled days); `get_recent_activities(path, limit) -> list[dict]`; `write_sync_log(path, status, message, availability)`; `get_last_sync(path) -> dict | None`.
 
 - [ ] **Step 1: Write failing tests**
 
@@ -741,6 +741,25 @@ def test_get_history_returns_field_series(tmp_path):
         m["hrv_last_night"] = 40 + i
         db.upsert_daily(p, d, m, recovery=None, strain=None)
     assert db.get_history(p, "hrv_last_night", 30) == [40, 41, 42]
+
+def test_get_history_before_excludes_target_day(tmp_path):
+    p = tmp_path / "t.db"
+    db.init_db(p)
+    for i, d in enumerate(["2026-06-17", "2026-06-18", "2026-06-19"]):
+        m = {k: None for k in db.DAILY_FIELDS}
+        m["rhr"] = 50 + i
+        db.upsert_daily(p, d, m, recovery=None, strain=None)
+    # baseline for 2026-06-19 should be the two earlier days only
+    assert db.get_history_before(p, "rhr", "2026-06-19", 30) == [50, 51]
+
+def test_get_existing_dates(tmp_path):
+    p = tmp_path / "t.db"
+    db.init_db(p)
+    for d in ["2026-06-17", "2026-06-19"]:
+        db.upsert_daily(p, d, {k: None for k in db.DAILY_FIELDS}, None, None)
+    got = db.get_existing_dates(p, 30)
+    assert got == {"2026-06-17", "2026-06-19"}
+    assert "2026-06-18" not in got       # a gap to be backfilled
 
 def test_sync_log_roundtrip(tmp_path):
     p = tmp_path / "t.db"
@@ -853,6 +872,30 @@ def get_history(path, field, days):
         return [r[field] for r in reversed(rows)]
 
 
+def get_history_before(path, field, before_date, days):
+    """The `days` most recent values of `field` strictly before `before_date`,
+    returned ascending. Used to build a recovery baseline that excludes the day
+    being scored."""
+    if field not in DAILY_FIELDS:
+        raise ValueError(f"unknown field {field}")
+    with _conn(path) as c:
+        rows = c.execute(
+            f"SELECT {field} FROM daily_metrics WHERE date < ? "
+            f"ORDER BY date DESC LIMIT ?", (before_date, days)
+        ).fetchall()
+        return [r[field] for r in reversed(rows)]
+
+
+def get_existing_dates(path, days):
+    """Set of date strings present among the most recent `days` rows. Used to
+    skip days already stored during backfill."""
+    with _conn(path) as c:
+        rows = c.execute(
+            "SELECT date FROM daily_metrics ORDER BY date DESC LIMIT ?", (days,)
+        ).fetchall()
+        return {r["date"] for r in rows}
+
+
 def get_recent_activities(path, limit):
     with _conn(path) as c:
         rows = c.execute(
@@ -891,71 +934,176 @@ git add backend/db.py backend/tests/test_db.py
 git commit -m "feat: add SQLite schema with null-preserving upsert/read helpers"
 ```
 
-### Task 6: Sync orchestration
+### Task 6: Sync orchestration (Whoop-style: today-first + paced backfill)
 
 **Files:**
+- Modify: `backend/garmin_client.py` (add `fetch_baseline` + `last_fetch_had_errors`)
 - Create: `backend/sync.py`
-- Test: `backend/tests/test_sync.py`
+- Test: `backend/tests/test_garmin_client.py` (add 2 tests), `backend/tests/test_sync.py`
 
 **Interfaces:**
-- Produces: `run_sync(client, db_path) -> dict` (returns `{"status", "message", "availability"}`); computes recovery from stored history + today, computes strain from the day's activities, writes daily + activities + sync_log. Catches `GarminAuthError`/`GarminRateLimitError`/`GarminConnectionError` and logs a failed sync without raising.
+- Adds to `GarminClient`: `last_fetch_had_errors` (property — True if the most recent `fetch_day`/`fetch_baseline` had any underlying call raise, i.e. a transport/rate error vs a genuine empty return) and `fetch_baseline(date_str) -> dict` (lightweight 2-call pull of just `{"hrv_last_night", "hrv_status", "rhr"}` for backfilling history cheaply). `fetch_day` and `fetch_baseline` both reset the error counter at entry.
+- Produces: `run_sync(client, db_path, today=None, backfill_days=BASELINE_WINDOW_DAYS, pacing=1.5) -> dict` returning `{"status", "message", "availability"}`. Primary day is **today** (Garmin files last night's sleep/HRV under the wake date). Backfills missing days in the baseline window oldest→newest using `fetch_baseline` (paced; on a transport/rate error it stops and marks the sync `"partial"`, resuming next run). Computes recovery per day from `get_history_before` (baseline excludes the scored day) and today's strain from today's activities. Catches `GarminAuthError`/`GarminRateLimitError`/`GarminConnectionError`/`GarminMFARequired` and logs a failed sync without raising. `status` is `"ok"`, `"partial"` (backfill rate-limited), or `"error"`.
 
-- [ ] **Step 1: Write failing test (sync stores data and computes scores; failure logs without raising)**
+- [ ] **Step 1a: Write failing tests for the garmin_client additions**
+
+Append to `backend/tests/test_garmin_client.py` (uses the existing `_client_with_api` helper):
+
+```python
+def test_last_fetch_had_errors_tracks_exceptions():
+    api = MagicMock()
+    api.get_user_summary.return_value = {"restingHeartRate": 50}
+    api.get_hrv_data.return_value = {"hrvSummary": {"lastNightAvg": 40, "status": "BALANCED"}}
+    c = _client_with_api(api)
+    base = c.fetch_baseline("2026-06-19")
+    assert base == {"hrv_last_night": 40, "hrv_status": "BALANCED", "rhr": 50}
+    assert c.last_fetch_had_errors is False
+
+def test_last_fetch_had_errors_true_on_transport_error():
+    api = MagicMock()
+    api.get_user_summary.side_effect = ConnectionError("429")   # transport error
+    api.get_hrv_data.return_value = None
+    c = _client_with_api(api)
+    base = c.fetch_baseline("2026-06-19")
+    assert base["rhr"] is None
+    assert c.last_fetch_had_errors is True                       # vs genuine empty
+```
+
+- [ ] **Step 1b: Write failing tests for `backend/sync.py`**
 
 ```python
 # backend/tests/test_sync.py
+import datetime as dt
 from unittest.mock import MagicMock
 import backend.db as db
 import backend.sync as sync
 from backend.garmin_client import GarminAuthError
 
+TODAY = dt.date(2026, 6, 20)
+
 def _metrics(hrv, rhr):
     m = {k: None for k in db.DAILY_FIELDS}
-    m.update(hrv_last_night=hrv, rhr=rhr, sleep_score=80)
+    m.update(hrv_last_night=hrv, rhr=rhr, hrv_status="BALANCED", sleep_score=80)
     return m
 
-def test_run_sync_stores_and_scores(tmp_path):
-    p = tmp_path / "t.db"
-    db.init_db(p)
-    # seed 20 days of history so recovery can compute
-    for i in range(20):
-        db.upsert_daily(p, f"2026-05-{i+1:02d}", _metrics(40, 50), None, None)
-    client = MagicMock()
-    client.fetch_day.return_value = (_metrics(45, 48),
-                                     {k: "available" for k in db.DAILY_FIELDS})
-    client.fetch_activities.return_value = [{
-        "activity_id": 1, "date": "2026-06-19", "type": "running",
+def _client(today_hrv=45, today_rhr=48):
+    c = MagicMock()
+    c.last_fetch_had_errors = False
+    c.fetch_day.return_value = (_metrics(today_hrv, today_rhr),
+                                {k: "available" for k in db.DAILY_FIELDS})
+    c.fetch_baseline.side_effect = lambda d: {
+        "hrv_last_night": 40, "hrv_status": "BALANCED", "rhr": 50}
+    c.fetch_activities.return_value = [{
+        "activity_id": 1, "date": TODAY.isoformat(), "type": "running",
         "duration_s": 1800, "avg_hr": 150, "max_hr": 170,
         "training_load": 120, "aerobic_te": 3.0, "anaerobic_te": 0.5}]
-    result = sync.run_sync(client, p, today=None)
+    return c
+
+def test_run_sync_backfills_then_scores_today(tmp_path):
+    p = tmp_path / "t.db"
+    db.init_db(p)
+    c = _client()
+    result = sync.run_sync(c, p, today=TODAY, backfill_days=30, pacing=0)
     assert result["status"] == "ok"
-    rows = db.get_trends(p, 60)
-    latest = rows[-1]
-    assert latest["recovery_score"] is not None
-    assert latest["strain_score"] is not None
+    today_row = db.get_daily(p, TODAY.isoformat())
+    assert today_row["recovery_score"] is not None     # baseline backfilled → score exists
+    assert today_row["strain_score"] is not None        # today's activity → strain
+    # backfilled ~30 prior days of HRV/RHR exist for the trend
+    assert len(db.get_existing_dates(p, 60)) >= 30
     assert db.get_last_sync(p)["status"] == "ok"
+
+def test_run_sync_skips_existing_backfill_days(tmp_path):
+    p = tmp_path / "t.db"
+    db.init_db(p)
+    # pre-seed one past day; it must not be re-fetched
+    db.upsert_daily(p, "2026-06-10", _metrics(41, 49), None, None)
+    c = _client()
+    sync.run_sync(c, p, today=TODAY, backfill_days=30, pacing=0)
+    fetched_dates = [call.args[0] for call in c.fetch_baseline.call_args_list]
+    assert "2026-06-10" not in fetched_dates             # skipped (already present)
+
+def test_run_sync_partial_when_backfill_rate_limited(tmp_path):
+    p = tmp_path / "t.db"
+    db.init_db(p)
+    c = _client()
+    c.last_fetch_had_errors = True                       # every backfill fetch "errors"
+    result = sync.run_sync(c, p, today=TODAY, backfill_days=30, pacing=0)
+    assert result["status"] == "partial"                 # stopped early, resume next run
+    assert db.get_last_sync(p)["status"] == "partial"
 
 def test_run_sync_logs_auth_failure_without_raising(tmp_path):
     p = tmp_path / "t.db"
     db.init_db(p)
-    client = MagicMock()
-    client.fetch_day.side_effect = GarminAuthError("bad")
-    result = sync.run_sync(client, p, today=None)
+    c = MagicMock()
+    c.last_fetch_had_errors = False
+    c.fetch_baseline.side_effect = GarminAuthError("bad")
+    result = sync.run_sync(c, p, today=TODAY, backfill_days=2, pacing=0)
     assert result["status"] == "error"
     assert db.get_last_sync(p)["status"] == "error"
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [ ] **Step 2: Run tests to verify they fail**
 
-Run: `.venv/Scripts/python -m pytest backend/tests/test_sync.py -v`
-Expected: FAIL.
+Run: `.venv/Scripts/python -m pytest backend/tests/test_sync.py backend/tests/test_garmin_client.py -v`
+Expected: FAIL (`fetch_baseline`/`run_sync` not defined).
 
-- [ ] **Step 3: Implement `backend/sync.py`**
+- [ ] **Step 3a: Add `fetch_baseline` + `last_fetch_had_errors` to `backend/garmin_client.py`**
+
+In `GarminClient._safe`, count errors; reset the counter at the start of
+`fetch_day`; add the property and method. The error counter lets backfill tell a
+rate-limit (retry later) apart from a genuinely empty day (store and move on).
 
 ```python
-"""Orchestrate a sync: pull yesterday + 30d activities, score, store, log."""
+    # --- replace the existing _safe with this error-counting version ---
+    def _safe(self, fn, default=None):
+        """Call a library getter; on any error return default (never raise),
+        and record that an error occurred for last_fetch_had_errors."""
+        try:
+            return fn()
+        except Exception as e:  # library raises varied types on missing data
+            self._fetch_errors = getattr(self, "_fetch_errors", 0) + 1
+            log.warning("metric fetch failed: %s", type(e).__name__)
+            return default
+
+    @property
+    def last_fetch_had_errors(self):
+        return getattr(self, "_fetch_errors", 0) > 0
+
+    def fetch_baseline(self, date_str):
+        """Lightweight pull for backfilling history cheaply: HRV + RHR only
+        (2 calls), so a 30-day backfill stays within Garmin's rate limits."""
+        self._fetch_errors = 0
+        api = self.api
+        summary = self._safe(lambda: api.get_user_summary(date_str), {}) or {}
+        hrv = self._safe(lambda: api.get_hrv_data(date_str), None)
+        hrv_sum = (hrv or {}).get("hrvSummary", {}) if hrv else {}
+        return {
+            "hrv_last_night": hrv_sum.get("lastNightAvg"),
+            "hrv_status": hrv_sum.get("status"),
+            "rhr": summary.get("restingHeartRate"),
+        }
+```
+
+Also add `self._fetch_errors = 0` as the first line of `fetch_day` (so the
+property reflects only the most recent call).
+
+- [ ] **Step 3b: Implement `backend/sync.py`**
+
+```python
+"""Orchestrate a Whoop-style sync.
+
+Primary day is TODAY: Garmin files last night's sleep and HRV under the wake
+date, so today's record holds last night's sleep+HRV plus today's accumulating
+wellness and workouts. Recovery for a day compares that day's HRV/RHR to the
+trailing 30-day baseline (days strictly before it). On a fresh DB the baseline
+and trends are empty, so we backfill missing days in the window (HRV/RHR only,
+via fetch_baseline) oldest->newest — paced and 429-tolerant: a transport/rate
+error stops the backfill, keeps what we have, marks the sync 'partial', and
+resumes on the next run.
+"""
 import datetime as dt
 import logging
+import time
 
 import backend.db as db
 from backend import recovery as rec
@@ -967,44 +1115,71 @@ from backend.garmin_client import (
 
 log = logging.getLogger("sync")
 
+_FETCH_ERRORS = (GarminAuthError, GarminRateLimitError, GarminConnectionError,
+                 GarminMFARequired)
 
-def run_sync(client, db_path, today=None):
+
+def _recovery_for(db_path, date_str, hrv_today, rhr_today):
+    hrv_hist = db.get_history_before(db_path, "hrv_last_night", date_str, BASELINE_WINDOW_DAYS)
+    rhr_hist = db.get_history_before(db_path, "rhr", date_str, BASELINE_WINDOW_DAYS)
+    return rec.recovery_score(hrv_today, rhr_today, hrv_hist, rhr_hist)
+
+
+def run_sync(client, db_path, today=None, backfill_days=BASELINE_WINDOW_DAYS, pacing=1.5):
     today = today or dt.date.today()
-    target = (today - dt.timedelta(days=1)).isoformat()        # yesterday
-    start = (today - dt.timedelta(days=30)).isoformat()
+    today_str = today.isoformat()
+    start_str = (today - dt.timedelta(days=backfill_days)).isoformat()
+    existing = db.get_existing_dates(db_path, backfill_days)
+
+    status = "ok"
     try:
-        metrics, availability = client.fetch_day(target)
-        activities = client.fetch_activities(start, target)
-    except (GarminAuthError, GarminRateLimitError, GarminConnectionError,
-            GarminMFARequired) as e:
+        # 1. Backfill missing PAST days (oldest first so each day's baseline
+        #    is already stored when we score it). Paced + 429-tolerant.
+        for i in range(backfill_days, 0, -1):
+            d = (today - dt.timedelta(days=i)).isoformat()
+            if d in existing:
+                continue
+            base = client.fetch_baseline(d)
+            if client.last_fetch_had_errors:
+                status = "partial"          # rate-limited; resume next sync
+                break
+            metrics = {k: None for k in db.DAILY_FIELDS}
+            metrics.update(base)
+            recovery = _recovery_for(db_path, d, base.get("hrv_last_night"), base.get("rhr"))
+            db.upsert_daily(db_path, d, metrics, recovery, None)
+            if pacing:
+                time.sleep(pacing)
+
+        # 2. Today (full) + activities through today.
+        metrics, availability = client.fetch_day(today_str)
+        activities = client.fetch_activities(start_str, today_str)
+    except _FETCH_ERRORS as e:
         msg = type(e).__name__
         log.warning("sync failed: %s", msg)
         db.write_sync_log(db_path, "error", msg, {})
         return {"status": "error", "message": msg, "availability": {}}
 
-    # baseline history EXCLUDING today's target (avoid self-inclusion)
-    hrv_hist = db.get_history(db_path, "hrv_last_night", BASELINE_WINDOW_DAYS)
-    rhr_hist = db.get_history(db_path, "rhr", BASELINE_WINDOW_DAYS)
-    recovery = rec.recovery_score(metrics.get("hrv_last_night"),
-                                  metrics.get("rhr"), hrv_hist, rhr_hist)
-    strain = rec.strain_score([a for a in activities if a.get("date") == target])
-
-    db.upsert_daily(db_path, target, metrics, recovery, strain)
     db.upsert_activities(db_path, activities)
-    db.write_sync_log(db_path, "ok", "synced", availability)
-    return {"status": "ok", "message": "synced", "availability": availability}
+    recovery = _recovery_for(db_path, today_str,
+                             metrics.get("hrv_last_night"), metrics.get("rhr"))
+    strain = rec.strain_score([a for a in activities if a.get("date") == today_str])
+    db.upsert_daily(db_path, today_str, metrics, recovery, strain)
+
+    msg = "synced" if status == "ok" else "synced (backfill rate-limited; will resume)"
+    db.write_sync_log(db_path, status, msg, availability)
+    return {"status": status, "message": msg, "availability": availability}
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [ ] **Step 4: Run tests to verify they pass**
 
-Run: `.venv/Scripts/python -m pytest backend/tests/test_sync.py -v`
+Run: `.venv/Scripts/python -m pytest backend/tests/test_sync.py backend/tests/test_garmin_client.py -v`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add backend/sync.py backend/tests/test_sync.py
-git commit -m "feat: add sync orchestration with scoring and failure logging"
+git add backend/sync.py backend/tests/test_sync.py backend/garmin_client.py backend/tests/test_garmin_client.py
+git commit -m "feat: add today-first sync with paced 429-tolerant backfill"
 ```
 
 ### Task 7: Real sync run + show stored sample (Checkpoint 3)
@@ -1033,8 +1208,15 @@ print("RECENT ACTIVITIES:", json.dumps(db.get_recent_activities(cfg.DB_PATH, 5),
 
 - [ ] **Step 2: Run it**
 
-Run: `.venv/Scripts/python -m backend._checkpoint_sync`
-Expected: a single real day stored (recovery likely `null` — "building baseline" on a fresh DB, which is expected), activities stored. **STOP and show the user the stored sample for Checkpoint 3.** After confirmation, delete `_checkpoint_pull.py` and `_checkpoint_sync.py`.
+Run (in the background — the 30-day paced backfill takes a few minutes and may
+hit Garmin's rate limit, in which case status is `"partial"` and the rest fills
+in on later syncs): `.venv/Scripts/python -m backend._checkpoint_sync`
+Expected: today's row stored with last night's sleep + today's wellness, ~30
+backfilled days of HRV/RHR for the trends, today's activities, and a recovery
+score for today (baseline backfilled). On a rate limit, status `"partial"` with
+partial backfill — also a valid result to show. **STOP and show the user the
+stored sample for Checkpoint 3.** After confirmation, delete `_checkpoint_pull.py`
+and `_checkpoint_sync.py`.
 
 ```bash
 git add -A && git commit -m "chore: remove checkpoint scripts after verification"

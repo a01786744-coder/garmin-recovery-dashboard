@@ -49,6 +49,28 @@ some return `[]`, and some return a dict with `null` fields. The sync layer MUST
 null-check every return and every field, store missing values as SQL `NULL`, and
 log the metric as "unavailable" in the sync log — never crash, never fabricate.
 
+### Day model (Whoop-style) — corrected after live verification
+
+Garmin files **last night's sleep and HRV under the wake date (today)**, not the
+prior calendar day. Verified live: `get_sleep_data("2026-06-20")` returns last
+night's sleep score; `get_hrv_data("2026-06-20")` returns `lastNightAvg`. So the
+dashboard's primary day is **today**:
+
+- **Recovery, Sleep, HRV, RHR** come from today's record (last night's sleep).
+- **Strain + activities** accumulate over today (today's workouts).
+- **Body Battery, stress, steps, calories** are today's live/accumulating values.
+
+This mirrors Whoop's morning dashboard. Missing-HRV days (no overnight wear)
+show **"No data"** for Recovery — never fabricated.
+
+**Backfill:** A fresh DB has no history, so trends (14-day) and the recovery
+baseline (30-day) would be empty for weeks. On sync, the backend backfills
+missing days within the baseline window — pulling only HRV + RHR per past day
+(2 calls/day via a lighter `fetch_baseline`) so trends and recovery work on day
+one. Backfill is **paced** (delay between day-fetches) and **429-tolerant**: on a
+transport/rate error it stops, keeps what it got, marks the sync "partial", and
+resumes on the next 30-minute run.
+
 ### Auth & credentials
 
 - Credentials only via `GARMIN_EMAIL` / `GARMIN_PASSWORD` in a gitignored `.env`.
