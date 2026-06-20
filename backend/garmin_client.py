@@ -85,7 +85,6 @@ class GarminClient:
             raise RuntimeError("login() must be called first")
         return self._api
 
-    # --- replace the existing _safe with this error-counting version ---
     def _safe(self, fn, default=None):
         """Call a library getter; on any error return default (never raise),
         and record that an error occurred for last_fetch_had_errors."""
