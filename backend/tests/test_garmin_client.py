@@ -84,3 +84,21 @@ def test_fetch_day_never_raises_on_exception():
     metrics, avail = _client_with_api(api).fetch_day("2026-06-19")
     assert metrics["steps"] is None
     assert avail["steps"] == "unavailable"
+
+def test_fetch_activities_tolerates_nulls_and_missing_fields():
+    api = MagicMock()
+    api.get_activities_by_date.return_value = [
+        {"activityId": 1, "startTimeLocal": "2026-06-19 07:00:00",
+         "activityType": {"typeKey": "running"}, "duration": 1800,
+         "averageHR": 150, "maxHR": 170, "activityTrainingLoad": 120,
+         "aerobicTrainingEffect": 3.0, "anaerobicTrainingEffect": 0.5},
+        {"activityId": 2},                 # almost-empty activity
+        None,                              # null entry
+    ]
+    acts = _client_with_api(api).fetch_activities("2026-05-20", "2026-06-19")
+    assert len(acts) == 3
+    assert acts[0]["type"] == "running"
+    assert acts[0]["avg_hr"] == 150
+    assert acts[1]["activity_id"] == 2
+    assert acts[1]["type"] is None        # missing field → None, no crash
+    assert acts[2]["activity_id"] is None # null entry handled
