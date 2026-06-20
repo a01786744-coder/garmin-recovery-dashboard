@@ -41,3 +41,46 @@ def test_login_wraps_auth_error_without_leaking_creds():
             assert False, "should raise"
         except gc.GarminAuthError as e:
             assert "secret" not in str(e)
+
+def _client_with_api(api):
+    c = gc.GarminClient("e", "p", "/tmp")
+    c._api = api
+    return c
+
+def test_fetch_day_handles_none_and_empty():
+    api = MagicMock()
+    api.get_user_summary.return_value = {
+        "totalSteps": 1119, "totalKilocalories": 2202.0,
+        "restingHeartRate": 52, "averageStressLevel": 28,
+        "bodyBatteryMostRecentValue": 60,
+    }
+    api.get_sleep_data.return_value = {
+        "dailySleepDTO": {
+            "deepSleepSeconds": 3600, "lightSleepSeconds": 7200,
+            "remSleepSeconds": 5400, "awakeSleepSeconds": 600,
+            "sleepScores": {"overall": {"value": 82}},
+        }
+    }
+    api.get_hrv_data.return_value = None                       # no-data day → None
+    api.get_training_readiness.return_value = []               # empty list
+    api.get_max_metrics.return_value = None
+    metrics, avail = _client_with_api(api).fetch_day("2026-06-19")
+    assert metrics["steps"] == 1119
+    assert metrics["sleep_score"] == 82
+    assert metrics["rhr"] == 52
+    assert metrics["hrv_last_night"] is None
+    assert avail["hrv_last_night"] == "unavailable"
+    assert avail["steps"] == "available"
+    assert metrics["training_readiness_score"] is None
+    assert avail["training_readiness_score"] == "unavailable"
+
+def test_fetch_day_never_raises_on_exception():
+    api = MagicMock()
+    api.get_user_summary.side_effect = KeyError("boom")
+    api.get_sleep_data.return_value = None
+    api.get_hrv_data.return_value = None
+    api.get_training_readiness.return_value = []
+    api.get_max_metrics.return_value = None
+    metrics, avail = _client_with_api(api).fetch_day("2026-06-19")
+    assert metrics["steps"] is None
+    assert avail["steps"] == "unavailable"
