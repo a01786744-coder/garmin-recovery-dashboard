@@ -171,24 +171,47 @@ Present the structure to the user and wait for go-ahead.
 - Test: `backend/tests/test_garmin_client.py`
 
 **Interfaces:**
-- Produces: `class GarminClient` with `__init__(email, password, tokenstore)`, `login() -> None` (raises `GarminAuthError` on bad creds), and a module-level `GarminAuthError`, `GarminRateLimitError`, `GarminConnectionError` (thin wrappers re-raised from the library so callers don't import library internals).
+- Produces: `class GarminClient` with `__init__(email, password, tokenstore)`, `login() -> None`, `complete_mfa(client_state, code) -> None`, and a read-only `api` property. Module-level exceptions: `GarminAuthError`, `GarminRateLimitError`, `GarminConnectionError`, and `GarminMFARequired` (carries `.client_state` — raised by `login()` when the account needs an MFA code and no valid tokens exist). Wrappers re-raised from the library so callers don't import library internals.
+- Auth model (verified against installed garminconnect 0.3.2): `Garmin(email, password, return_on_mfa=True)`; `login(tokenstore)` returns `(needs_mfa, client_state)` — `needs_mfa` truthy means an MFA code is required; the garth token client is `api.client` and tokens are persisted with `api.client.dump(path)` (neither the MFA early-return nor `resume_login` dumps automatically, so `GarminClient` always dumps after a clean login or MFA completion). `resume_login(client_state, code)` finishes an MFA login.
 
-- [ ] **Step 1: Write the failing test (login resumes from tokenstore, never logs creds)**
+- [ ] **Step 1: Write the failing tests (clean login dumps tokens; MFA path raises with state; creds never leak)**
 
 ```python
 # backend/tests/test_garmin_client.py
 from unittest.mock import MagicMock, patch
 import backend.garmin_client as gc
 
-def test_login_calls_library_with_tokenstore():
+def test_clean_login_dumps_tokens():
     with patch.object(gc, "Garmin") as MockGarmin:
-        instance = MockGarmin.return_value
+        api = MockGarmin.return_value
+        api.login.return_value = (None, None)          # no MFA needed
         client = gc.GarminClient("e@x.com", "secret", "/tmp/ts")
         client.login()
-        MockGarmin.assert_called_once()
-        instance.login.assert_called_once_with("/tmp/ts")
+        MockGarmin.assert_called_once_with("e@x.com", "secret", return_on_mfa=True)
+        api.login.assert_called_once_with("/tmp/ts")
+        api.client.dump.assert_called_once_with("/tmp/ts")   # tokens persisted
 
-def test_login_wraps_auth_error():
+def test_login_raises_mfa_required_with_state():
+    with patch.object(gc, "Garmin") as MockGarmin:
+        api = MockGarmin.return_value
+        api.login.return_value = ("needs_mfa", {"state": 1})
+        client = gc.GarminClient("e@x.com", "secret", "/tmp/ts")
+        try:
+            client.login()
+            assert False, "should raise"
+        except gc.GarminMFARequired as e:
+            assert e.client_state == {"state": 1}
+
+def test_complete_mfa_resumes_and_dumps():
+    with patch.object(gc, "Garmin") as MockGarmin:
+        api = MockGarmin.return_value
+        client = gc.GarminClient("e@x.com", "secret", "/tmp/ts")
+        client._api = api                               # simulate post-login state
+        client.complete_mfa({"state": 1}, "123456")
+        api.resume_login.assert_called_once_with({"state": 1}, "123456")
+        api.client.dump.assert_called_once_with("/tmp/ts")
+
+def test_login_wraps_auth_error_without_leaking_creds():
     with patch.object(gc, "Garmin") as MockGarmin:
         from garminconnect import GarminConnectAuthenticationError
         MockGarmin.return_value.login.side_effect = GarminConnectAuthenticationError("bad")
@@ -197,10 +220,10 @@ def test_login_wraps_auth_error():
             client.login()
             assert False, "should raise"
         except gc.GarminAuthError as e:
-            assert "secret" not in str(e)  # never leak credentials
+            assert "secret" not in str(e)
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [ ] **Step 2: Run tests to verify they fail**
 
 Run: `.venv/Scripts/python -m pytest backend/tests/test_garmin_client.py -v`
 Expected: FAIL (module/attr not defined).
@@ -209,11 +232,15 @@ Expected: FAIL (module/attr not defined).
 
 ```python
 # backend/garmin_client.py
-"""Authenticated wrapper around the garminconnect library.
+"""Authenticated wrapper around the garminconnect library (v0.3.2).
 
-Never logs or includes credential values in error messages.
+Never logs or includes credential values in error messages. Tokens are
+persisted to the tokenstore directory so only the first login needs
+credentials/MFA; later runs resume silently.
 """
 import logging
+import os
+
 from garminconnect import (
     Garmin,
     GarminConnectAuthenticationError,
@@ -236,6 +263,14 @@ class GarminConnectionError(Exception):
     pass
 
 
+class GarminMFARequired(Exception):
+    """Raised by login() when the account needs an MFA code and no valid
+    tokens exist. Carries client_state to pass to complete_mfa()."""
+    def __init__(self, client_state):
+        super().__init__("MFA code required to complete Garmin login")
+        self.client_state = client_state
+
+
 class GarminClient:
     def __init__(self, email, password, tokenstore):
         self._email = email
@@ -244,15 +279,41 @@ class GarminClient:
         self._api = None
 
     def login(self):
+        """Resume from the token store, or do a credential login.
+
+        On a clean login (tokens loaded, or a non-MFA account), persists
+        tokens and returns. If the account needs MFA and no valid tokens
+        exist, raises GarminMFARequired carrying the client_state.
+        """
         try:
-            self._api = Garmin(self._email, self._password)
-            self._api.login(self._tokenstore)
+            self._api = Garmin(self._email, self._password, return_on_mfa=True)
+            needs_mfa, client_state = self._api.login(self._tokenstore)
         except GarminConnectAuthenticationError:
             raise GarminAuthError("Garmin authentication failed (check .env credentials)")
         except GarminConnectTooManyRequestsError:
             raise GarminRateLimitError("Garmin rate limit hit (HTTP 429)")
+        except GarminConnectionError:
+            raise
         except GarminConnectConnectionError:
             raise GarminConnectionError("Could not connect to Garmin Connect")
+        if needs_mfa:
+            raise GarminMFARequired(client_state)
+        self._dump_tokens()
+
+    def complete_mfa(self, client_state, code):
+        """Finish an MFA login with the user-supplied code, then persist tokens."""
+        try:
+            self._api.resume_login(client_state, code)
+        except GarminConnectAuthenticationError:
+            raise GarminAuthError("Garmin MFA verification failed (wrong or expired code)")
+        self._dump_tokens()
+
+    def _dump_tokens(self):
+        os.makedirs(self._tokenstore, exist_ok=True)
+        try:
+            self._api.client.dump(self._tokenstore)
+        except Exception:
+            log.warning("could not persist Garmin tokens")
 
     @property
     def api(self):
@@ -261,7 +322,7 @@ class GarminClient:
         return self._api
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [ ] **Step 4: Run tests to verify they pass**
 
 Run: `.venv/Scripts/python -m pytest backend/tests/test_garmin_client.py -v`
 Expected: PASS.
@@ -270,7 +331,7 @@ Expected: PASS.
 
 ```bash
 git add backend/garmin_client.py backend/tests/test_garmin_client.py
-git commit -m "feat: add Garmin auth client with credential-safe error wrapping"
+git commit -m "feat: add MFA-capable Garmin auth client with credential-safe errors"
 ```
 
 ### Task 3: Metric pull functions with null→"unavailable" handling
@@ -420,21 +481,52 @@ git commit -m "feat: add metric/activity fetch with null-safe unavailable handli
 
 - [ ] **Step 6: Write a throwaway checkpoint script and run a REAL pull**
 
+This script must work in a non-interactive (non-TTY) terminal, so MFA is
+relayed via a file: if a code is required, the script writes a `MFA_PENDING`
+marker and polls `data/.mfa_code` for up to 5 minutes. The controller asks the
+user for the code in chat and writes it to that file. (Credentials are never
+printed; the MFA file is deleted after use.)
+
 Create `backend/_checkpoint_pull.py` (temporary; deleted after):
 
 ```python
 """One-off Checkpoint 2 verification: real login + full data pull.
-Prints raw availability. Does NOT print credentials. Delete after use.
+Prints raw availability. Never prints credentials. Delete after use.
+
+Non-interactive MFA: on MFA, writes data/.mfa_code (empty) + prints
+'MFA_PENDING', then polls that file until the controller writes the code.
 """
-import json, datetime as dt
+import json, time, datetime as dt
+from pathlib import Path
 import backend.config as cfg
-from backend.garmin_client import GarminClient
+from backend.garmin_client import GarminClient, GarminMFARequired
 
 yesterday = (dt.date.today() - dt.timedelta(days=1)).isoformat()
 month_ago = (dt.date.today() - dt.timedelta(days=30)).isoformat()
+mfa_file = cfg.DATA_DIR / ".mfa_code"
 
 c = GarminClient(cfg.GARMIN_EMAIL, cfg.GARMIN_PASSWORD, cfg.TOKENSTORE_DIR)
-c.login()
+try:
+    c.login()
+    print("LOGIN: ok (resumed tokens or no MFA)")
+except GarminMFARequired as e:
+    mfa_file.write_text("")            # signal: waiting for a code
+    print("MFA_PENDING: waiting for code in", mfa_file)
+    code = ""
+    for _ in range(150):               # up to ~5 min
+        time.sleep(2)
+        txt = mfa_file.read_text().strip() if mfa_file.exists() else ""
+        if txt:
+            code = txt
+            break
+    if not code:
+        print("MFA_TIMEOUT: no code received"); raise SystemExit(1)
+    c.complete_mfa(e.client_state, code)
+    print("LOGIN: ok (MFA completed)")
+finally:
+    if mfa_file.exists():
+        mfa_file.unlink()
+
 metrics, avail = c.fetch_day(yesterday)
 acts = c.fetch_activities(month_ago, yesterday)
 print("DATE:", yesterday)
@@ -445,8 +537,13 @@ if acts:
     print("SAMPLE ACTIVITY:", json.dumps(acts[0], indent=2, default=str))
 ```
 
-Run: `.venv/Scripts/python -m backend._checkpoint_pull`
-Expected: prints metrics + availability (some fields may be "unavailable") and activity count. **If MFA is required, the library will prompt** — handle interactively. **STOP and show the user the raw output for Checkpoint 2.** Do not delete `_checkpoint_pull.py` until the user confirms; then remove it.
+Run (in the background so the controller can relay an MFA code):
+`.venv/Scripts/python -m backend._checkpoint_pull`
+Expected: prints metrics + availability (some fields may be "unavailable") and
+activity count. If it prints `MFA_PENDING`, ask the user for the code, write it
+to `data/.mfa_code`, and the script continues. **STOP and show the user the raw
+output for Checkpoint 2.** Keep `_checkpoint_pull.py` until the user confirms;
+then remove it.
 
 ---
 
@@ -867,6 +964,7 @@ from backend import recovery as rec
 from backend.config import BASELINE_WINDOW_DAYS
 from backend.garmin_client import (
     GarminAuthError, GarminRateLimitError, GarminConnectionError,
+    GarminMFARequired,
 )
 
 log = logging.getLogger("sync")
@@ -879,7 +977,8 @@ def run_sync(client, db_path, today=None):
     try:
         metrics, availability = client.fetch_day(target)
         activities = client.fetch_activities(start, target)
-    except (GarminAuthError, GarminRateLimitError, GarminConnectionError) as e:
+    except (GarminAuthError, GarminRateLimitError, GarminConnectionError,
+            GarminMFARequired) as e:
         msg = type(e).__name__
         log.warning("sync failed: %s", msg)
         db.write_sync_log(db_path, "error", msg, {})

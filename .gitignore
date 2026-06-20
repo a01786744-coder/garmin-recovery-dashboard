@@ -2,6 +2,7 @@
 .env
 data/dashboard.db
 data/.garth/
+data/.mfa_code
 # Python
 __pycache__/
 *.pyc
