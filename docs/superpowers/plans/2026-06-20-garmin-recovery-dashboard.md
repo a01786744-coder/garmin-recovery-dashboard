@@ -292,8 +292,6 @@ class GarminClient:
             raise GarminAuthError("Garmin authentication failed (check .env credentials)")
         except GarminConnectTooManyRequestsError:
             raise GarminRateLimitError("Garmin rate limit hit (HTTP 429)")
-        except GarminConnectionError:
-            raise
         except GarminConnectConnectionError:
             raise GarminConnectionError("Could not connect to Garmin Connect")
         if needs_mfa:
