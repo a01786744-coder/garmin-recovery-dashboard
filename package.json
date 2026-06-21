@@ -1,0 +1,12 @@
+{
+  "name": "garmin-dashboard",
+  "version": "1.0.0",
+  "description": "Local Whoop-style recovery dashboard sourced from Garmin Connect.",
+  "main": "electron/main.js",
+  "scripts": {
+    "build:frontend": "npm --prefix frontend run build",
+    "start": "npm run build:frontend && electron .",
+    "test:backend": "python -m pytest backend -v"
+  },
+  "devDependencies": { "electron": "^31.3.0" }
+}
