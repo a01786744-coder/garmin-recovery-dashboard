@@ -26,3 +26,9 @@ def test_trends_endpoint(tmp_path):
 def test_sync_status_endpoint(tmp_path):
     client, _ = _client(tmp_path)
     assert client.get("/api/sync-status").status_code == 200
+
+def test_responses_carry_cors_header(tmp_path):
+    # Electron's file:// renderer can only read the API if it sends ACAO.
+    client, _ = _client(tmp_path)
+    resp = client.get("/api/today")
+    assert resp.headers.get("Access-Control-Allow-Origin") == "*"

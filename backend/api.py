@@ -15,6 +15,15 @@ def create_app(db_path=cfg.DB_PATH, client_factory=None):
     app = Flask(__name__, static_folder=None)
     db.init_db(db_path)
 
+    @app.after_request
+    def _local_cors(resp):
+        # The dashboard runs from a file:// origin inside Electron and fetches
+        # this API cross-origin; without an Access-Control-Allow-Origin header
+        # Chromium blocks the renderer from reading the responses. Safe here:
+        # the server only ever binds to 127.0.0.1 (never a public interface).
+        resp.headers["Access-Control-Allow-Origin"] = "*"
+        return resp
+
     def _trends(days):
         rows = db.get_trends(db_path, days)
         return {
