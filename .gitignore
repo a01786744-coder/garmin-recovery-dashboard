@@ -3,6 +3,7 @@
 data/dashboard.db
 data/.garth/
 data/.mfa_code
+data/*.log
 # Python
 __pycache__/
 *.pyc

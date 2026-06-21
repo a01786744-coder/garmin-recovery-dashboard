@@ -58,7 +58,8 @@ def strain_score(activities_for_day):
 
     Sum each activity's training_load (fallback: duration_minutes * (avg_hr/100)
     when training_load is missing), then map to 0-100 via a saturating curve
-    (load of ~300 ≈ 90). Returns None when there are no activities with usable data.
+    (1 - exp(-total/150): a daily load of ~345 maps to ~90). Returns None when
+    there are no activities with usable data.
     """
     acts = activities_for_day or []
     total = 0.0
