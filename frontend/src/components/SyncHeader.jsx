@@ -1,25 +1,42 @@
 import React from "react";
+import { motion } from "framer-motion";
+
 function ago(ts) {
   if (!ts) return "never";
-  const d = (Date.now() - new Date(ts + "Z").getTime()) / 60000;
+  // sync_log timestamps are UTC ("YYYY-MM-DD HH:MM:SS")
+  const d = (Date.now() - new Date(ts.replace(" ", "T") + "Z").getTime()) / 60000;
   if (d < 1) return "just now";
   if (d < 60) return `${Math.round(d)} min ago`;
   return `${Math.round(d / 60)} h ago`;
 }
+
 export default function SyncHeader({ sync, onRetry, syncing }) {
-  const err = sync && sync.status === "error";
+  const status = sync && sync.status;
+  const err = status === "error";
+  const partial = status === "partial";
+  const dot = err ? "#ef4444" : partial ? "#eab308" : "#22c55e";
   return (
-    <div className="flex items-center justify-between mb-6">
-      <h1 className="text-xl font-semibold text-neutral-100">Recovery Dashboard</h1>
-      <div className="flex items-center gap-3 text-sm">
-        <span className={err ? "text-red-400" : "text-neutral-400"}>
-          {err ? "Sync failed · " : ""}Last synced {ago(sync && sync.timestamp)}
+    <div className="flex items-center gap-3 text-sm">
+      <span className="flex items-center gap-2 text-neutral-400">
+        <span className="relative flex h-2 w-2">
+          {!err && (
+            <span className="absolute inline-flex h-full w-full rounded-full opacity-60 animate-ping"
+              style={{ background: dot }} />
+          )}
+          <span className="relative inline-flex h-2 w-2 rounded-full" style={{ background: dot }} />
         </span>
-        <button onClick={onRetry} disabled={syncing}
-          className="px-3 py-1 rounded bg-neutral-800 text-neutral-200 hover:bg-neutral-700 disabled:opacity-50">
-          {syncing ? "Syncing…" : "Retry"}
-        </button>
-      </div>
+        {err ? "Sync failed · " : partial ? "Partial · " : ""}
+        Synced {ago(sync && sync.timestamp)}
+      </span>
+      <motion.button
+        whileTap={{ scale: 0.95 }}
+        onClick={onRetry}
+        disabled={syncing}
+        className="rounded-lg border border-white/10 bg-neutral-800/80 px-3 py-1.5 text-neutral-200
+                   hover:bg-neutral-700 disabled:opacity-50 transition-colors"
+      >
+        {syncing ? "Syncing…" : "Retry"}
+      </motion.button>
     </div>
   );
 }
