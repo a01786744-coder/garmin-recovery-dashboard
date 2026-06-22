@@ -11,7 +11,14 @@ let backend = null;
 
 function startBackend() {
   const py = fs.existsSync(PY) ? PY : (isWin ? "python" : "python3");
-  backend = spawn(py, ["-m", "backend.api"], { cwd: ROOT, stdio: "inherit" });
+  // Per-user state (DB, token store, capability profile, settings, log) is
+  // written to the OS user-data dir, not the project folder, so one installed
+  // build serves any user without writing into its own directory.
+  backend = spawn(py, ["-m", "backend.api"], {
+    cwd: ROOT,
+    stdio: "inherit",
+    env: { ...process.env, GARMIN_DASH_DATA_DIR: app.getPath("userData") },
+  });
   backend.on("exit", (code) => console.log("backend exited", code));
 }
 

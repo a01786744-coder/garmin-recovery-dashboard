@@ -112,7 +112,15 @@ def _scheduled_loop(db_path, client_factory):
 
 
 def main():
-    logging.basicConfig(level=logging.INFO)
+    # Logs go to the user-data dir as well as stdout (Electron inherits stdio).
+    # Redaction/scrubbing of this file is handled in Phase 5.
+    logging.basicConfig(
+        level=logging.INFO,
+        handlers=[
+            logging.StreamHandler(),
+            logging.FileHandler(cfg.LOG_PATH, encoding="utf-8"),
+        ],
+    )
     from backend.garmin_client import GarminClient
 
     def factory():
