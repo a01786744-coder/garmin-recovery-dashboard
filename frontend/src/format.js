@@ -27,17 +27,22 @@ export function minutesToHm(m) {
   return `${h}h ${mm}m`;
 }
 
-// Running pace from speed (m/s) -> "m:ss /km"
-export function speedToPace(mps) {
+const MI = 1609.34;
+
+// Running pace from speed (m/s). units: "metric" -> /km, "imperial" -> /mi.
+export function speedToPace(mps, units = "metric") {
   if (!mps) return DASH;
-  const secPerKm = 1000 / mps;
-  const m = Math.floor(secPerKm / 60);
-  const s = Math.round(secPerKm % 60);
-  return `${m}:${String(s).padStart(2, "0")} /km`;
+  const per = units === "imperial" ? MI / mps : 1000 / mps;
+  const m = Math.floor(per / 60);
+  const s = Math.round(per % 60);
+  return `${m}:${String(s).padStart(2, "0")} ${units === "imperial" ? "/mi" : "/km"}`;
 }
 
-export function meters(m) {
+export function meters(m, units = "metric") {
   if (m == null) return DASH;
+  if (units === "imperial") {
+    return m >= MI ? `${(m / MI).toFixed(2)} mi` : `${Math.round(m * 3.28084)} ft`;
+  }
   return m >= 1000 ? `${(m / 1000).toFixed(2)} km` : `${Math.round(m)} m`;
 }
 

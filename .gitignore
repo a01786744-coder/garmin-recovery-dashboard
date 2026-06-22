@@ -1,9 +1,11 @@
-# Secrets & data
+# Secrets & data (dev-local per-user state; lives in the OS user-data dir in distribution)
 .env
 data/dashboard.db
 data/.garth/
 data/.mfa_code
 data/*.log
+data/capabilities.json
+data/settings.json
 # Python
 __pycache__/
 *.pyc

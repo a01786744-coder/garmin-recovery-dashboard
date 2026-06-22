@@ -25,3 +25,7 @@ export const getAuthStatus = () => j("/api/auth/status");
 export const postLogin = (email, password) => jsonPost("/api/auth/login", { email, password });
 export const postMfa = (code) => jsonPost("/api/auth/mfa", { code });
 export const postLogout = () => jsonPost("/api/auth/logout", {});
+export const postSwitchAccount = () => jsonPost("/api/auth/switch-account", {});
+
+export const getSettings = () => j("/api/settings");
+export const postSettings = (partial) => jsonPost("/api/settings", partial);

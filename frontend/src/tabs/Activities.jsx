@@ -11,7 +11,12 @@ import RouteMap from "../components/RouteMap.jsx";
 import { getActivity } from "../api.js";
 import { useAsync } from "../useApi.js";
 
-function SplitsTable({ splits }) {
+function elev(m, units) {
+  if (m == null) return "—";
+  return units === "imperial" ? `${round(m * 3.28084)} ft` : `${round(m)} m`;
+}
+
+function SplitsTable({ splits, units }) {
   if (!splits || !splits.length) return <NoData />;
   return (
     <div className="overflow-x-auto">
@@ -27,11 +32,11 @@ function SplitsTable({ splits }) {
           {splits.map((s, i) => (
             <tr key={i} className="border-t border-white/5">
               <td className="py-1.5 pr-3 text-neutral-500">{i + 1}</td>
-              <td className="pr-3">{meters(s.distance)}</td>
+              <td className="pr-3">{meters(s.distance, units)}</td>
               <td className="pr-3">{secsToHms(s.duration)}</td>
-              <td className="pr-3">{speedToPace(s.averageSpeed)}</td>
+              <td className="pr-3">{speedToPace(s.averageSpeed, units)}</td>
               <td className="pr-3">{s.averageHR ? round(s.averageHR) : "—"}</td>
-              <td className="pr-3">{s.elevationGain != null ? `${round(s.elevationGain)} m` : "—"}</td>
+              <td className="pr-3">{elev(s.elevationGain, units)}</td>
             </tr>
           ))}
         </tbody>
@@ -40,7 +45,7 @@ function SplitsTable({ splits }) {
   );
 }
 
-function Detail({ activity }) {
+function Detail({ activity, units }) {
   const { data, loading } = useAsync(() => getActivity(activity.activity_id), [activity.activity_id]);
   const zones = data?.hr_zones;
   return (
@@ -78,12 +83,12 @@ function Detail({ activity }) {
       </div>
 
       <SectionTitle>Splits</SectionTitle>
-      <SplitsTable splits={data?.splits} />
+      <SplitsTable splits={data?.splits} units={units} />
     </Card>
   );
 }
 
-export default function Activities({ today }) {
+export default function Activities({ today, units }) {
   const acts = today?.activities || [];
   const [sel, setSel] = useState(null);
   const selected = sel || acts[0] || null;
@@ -122,7 +127,7 @@ export default function Activities({ today }) {
           })}
         </ul>
       </Card>
-      {selected && <Detail activity={selected} />}
+      {selected && <Detail activity={selected} units={units} />}
     </div>
   );
 }

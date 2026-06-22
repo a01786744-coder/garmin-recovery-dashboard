@@ -90,6 +90,18 @@ def init_db(path):
             )""")
 
 
+_ALL_TABLES = ["daily_metrics", "activities", "sync_log", "daily_intraday",
+               "perf_metrics", "personal_records", "activity_detail"]
+
+
+def clear_all_data(path):
+    """Delete every row from every table (account switch / fresh start). Clears
+    rows only — does NOT drop tables, alter schema, or delete the DB file."""
+    with _conn(path) as c:
+        for t in _ALL_TABLES:
+            c.execute(f"DELETE FROM {t}")
+
+
 def upsert_daily(path, date, metrics, recovery, strain):
     cols = ["date"] + DAILY_FIELDS + ["recovery_score", "strain_score"]
     vals = [date] + [metrics.get(f) for f in DAILY_FIELDS] + [recovery, strain]

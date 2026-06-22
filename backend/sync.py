@@ -50,9 +50,9 @@ _FETCH_ERRORS = (GarminAuthError, GarminRateLimitError, GarminConnectionError,
                  GarminMFARequired)
 
 
-def _recovery_for(db_path, date_str, hrv_today, rhr_today):
-    hrv_hist = db.get_history_before(db_path, "hrv_last_night", date_str, BASELINE_WINDOW_DAYS)
-    rhr_hist = db.get_history_before(db_path, "rhr", date_str, BASELINE_WINDOW_DAYS)
+def _recovery_for(db_path, date_str, hrv_today, rhr_today, window=BASELINE_WINDOW_DAYS):
+    hrv_hist = db.get_history_before(db_path, "hrv_last_night", date_str, window)
+    rhr_hist = db.get_history_before(db_path, "rhr", date_str, window)
     return rec.recovery_score(hrv_today, rhr_today, hrv_hist, rhr_hist)
 
 
@@ -76,7 +76,7 @@ def run_sync(client, db_path, today=None, backfill_days=BASELINE_WINDOW_DAYS, pa
                 break
             metrics = {k: None for k in db.DAILY_FIELDS}
             metrics.update(base)
-            recovery = _recovery_for(db_path, d, base.get("hrv_last_night"), base.get("rhr"))
+            recovery = _recovery_for(db_path, d, base.get("hrv_last_night"), base.get("rhr"), backfill_days)
             db.upsert_daily(db_path, d, metrics, recovery, None)
             if pacing:
                 time.sleep(pacing)
@@ -92,7 +92,7 @@ def run_sync(client, db_path, today=None, backfill_days=BASELINE_WINDOW_DAYS, pa
 
     db.upsert_activities(db_path, activities)
     recovery = _recovery_for(db_path, today_str,
-                             metrics.get("hrv_last_night"), metrics.get("rhr"))
+                             metrics.get("hrv_last_night"), metrics.get("rhr"), backfill_days)
     strain = rec.strain_score([a for a in activities if a.get("date") == today_str])
     db.upsert_daily(db_path, today_str, metrics, recovery, strain)
 

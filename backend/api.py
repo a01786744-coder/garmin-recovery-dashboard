@@ -184,20 +184,51 @@ def create_app(db_path=cfg.DB_PATH, client_factory=None,
         pending.clear()
         return jsonify({"status": "ok"})
 
+    @app.post("/api/auth/switch-account")
+    def auth_switch_account():
+        # Sign out AND wipe this account's local data so the next account starts
+        # clean (rows only — no schema change or DB-file deletion). The capability
+        # profile is removed so it re-detects for the new watch.
+        _clear_tokens(tokenstore)
+        pending.clear()
+        db.clear_all_data(db_path)
+        try:
+            (Path(db_path).parent / "capabilities.json").unlink(missing_ok=True)
+        except OSError:
+            pass
+        return jsonify({"status": "ok"})
+
+    # --- Settings (units, sync interval, baseline window, tab visibility) ---
+
+    @app.get("/api/settings")
+    def get_settings_route():
+        from backend import settings as st
+        return jsonify(st.load_settings(Path(db_path).parent / "settings.json"))
+
+    @app.post("/api/settings")
+    def post_settings_route():
+        from backend import settings as st
+        data = request.get_json(silent=True) or {}
+        return jsonify(st.save_settings(Path(db_path).parent / "settings.json", data))
+
     return app
 
 
 def _scheduled_loop(db_path, client_factory):
+    from backend import settings as st
+    s = st.load_settings(Path(db_path).parent / "settings.json")
     try:
         client = client_factory()
         client.login()
-        run_sync(client, db_path)
+        run_sync(client, db_path, backfill_days=s["baseline_window_days"])
     except Exception as e:
         log.warning("scheduled sync failed: %s", type(e).__name__)
         db.write_sync_log(db_path, "error", type(e).__name__, {})
     finally:
-        t = threading.Timer(cfg.SYNC_INTERVAL_SECONDS, _scheduled_loop,
-                            args=(db_path, client_factory))
+        # Re-read the interval each cycle so a settings change takes effect on
+        # the next run without restarting the app.
+        interval = s["sync_interval_minutes"] * 60
+        t = threading.Timer(interval, _scheduled_loop, args=(db_path, client_factory))
         t.daemon = True
         t.start()
 
