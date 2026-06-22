@@ -7,6 +7,7 @@ import SectionTitle from "../components/ui/SectionTitle.jsx";
 import NoData from "../components/ui/NoData.jsx";
 import { ZONE } from "../theme.js";
 import { secsToHm, secsToHms, speedToPace, meters, round, titleCase } from "../format.js";
+import RouteMap from "../components/RouteMap.jsx";
 import { getActivity } from "../api.js";
 import { useAsync } from "../useApi.js";
 
@@ -57,12 +58,13 @@ function Detail({ activity }) {
         <StatTile label="Training load" value={activity.training_load != null ? round(activity.training_load) : null} />
       </div>
 
-      {/* Route map slot — populated in Phase 3 (Leaflet) */}
-      <div className="mb-4 rounded-xl border border-dashed border-white/10 bg-neutral-950/40 p-6 text-center text-xs text-neutral-600">
-        {loading ? "Loading route…"
-          : data?.polyline?.length
-          ? `Route ready — ${data.polyline.length} GPS points (interactive map in next update)`
-          : "No GPS route for this activity"}
+      {/* Route map */}
+      <div className="mb-4">
+        {loading ? (
+          <div className="h-[320px] animate-pulse rounded-xl bg-neutral-950/40" />
+        ) : (
+          <RouteMap polyline={data?.polyline} />
+        )}
       </div>
 
       <SectionTitle>HR zones</SectionTitle>

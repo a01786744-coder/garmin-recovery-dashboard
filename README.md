@@ -1,9 +1,18 @@
 # Garmin Recovery Dashboard
 
-A fully-local, Whoop-style recovery dashboard that pulls your Garmin Connect
-data (built and tested for a Garmin Forerunner 970) and shows Recovery, Sleep,
-and Strain scores plus HRV and resting-heart-rate trends. **All data stays on
-your machine** — the only network calls are to Garmin Connect itself.
+A local, Whoop-style recovery dashboard that pulls your Garmin Connect data
+(built and tested for a Garmin Forerunner 970) and shows Recovery, Sleep, and
+Strain scores, HRV/RHR trends, sleep & training detail, and an interactive
+run-route map, across five tabs (Overview · Sleep · Strain & Training ·
+Activities · Trends).
+
+**Your health data stays on your machine.** The only network calls are to
+Garmin Connect — with one deliberate exception: the **Activities route map**
+fetches dark basemap tiles from CartoDB's public tile servers. No health or
+account data is sent (only standard map-tile coordinates), but those requests do
+reveal the geographic area of your runs to the tile host. To stay fully local,
+remove the `<TileLayer>` in `frontend/src/components/RouteMap.jsx` (the route
+still draws on a plain background).
 
 > **Recovery and Strain are custom estimates, not official Garmin or Whoop
 > metrics.** The Recovery formula (HRV- and RHR-based, compared to your personal
