@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { getToday, getTrends, postSync, getAuthStatus, postLogout } from "./api.js";
+import { getToday, getTrends, postSync, getAuthStatus, postLogout, getCapabilities } from "./api.js";
+import { tabVisible } from "./caps.js";
 import SyncHeader from "./components/SyncHeader.jsx";
 import Login from "./Login.jsx";
 import Overview from "./tabs/Overview.jsx";
@@ -22,6 +23,7 @@ const VIEWS = { overview: Overview, sleep: Sleep, training: Training, activities
 export default function App() {
   const [today, setToday] = useState(null);
   const [trends, setTrends] = useState(null);
+  const [caps, setCaps] = useState(null);
   const [tab, setTab] = useState("overview");
   const [syncing, setSyncing] = useState(false);
   const [ready, setReady] = useState(false);
@@ -39,9 +41,10 @@ export default function App() {
 
   const load = useCallback(async () => {
     try {
-      const [t, tr] = await Promise.all([getToday(), getTrends(14)]);
+      const [t, tr, cp] = await Promise.all([getToday(), getTrends(14), getCapabilities()]);
       setToday(t);
       setTrends(tr);
+      setCaps(cp);
       // Silent token refresh is handled by the backend; only when a sync truly
       // fails to authenticate do we send the user back to the login screen.
       if (t?.sync?.status === "error" && t.sync.message === "GarminAuthError") {
@@ -93,7 +96,10 @@ export default function App() {
     );
   }
 
-  const Active = VIEWS[tab];
+  const shownTabs = TABS.filter(([key]) => tabVisible(caps, key));
+  // If the active tab got hidden by capability detection, fall back to overview.
+  const activeKey = shownTabs.some(([k]) => k === tab) ? tab : "overview";
+  const Active = VIEWS[activeKey];
 
   return (
     <div className="min-h-screen text-neutral-100">
@@ -113,16 +119,16 @@ export default function App() {
         </header>
 
         <nav className="mb-6 flex gap-1 overflow-x-auto rounded-xl border border-white/5 bg-neutral-900/50 p-1">
-          {TABS.map(([key, label]) => (
+          {shownTabs.map(([key, label]) => (
             <button
               key={key}
               onClick={() => setTab(key)}
               className={
                 "relative whitespace-nowrap rounded-lg px-3.5 py-1.5 text-sm font-medium transition-colors " +
-                (tab === key ? "text-neutral-50" : "text-neutral-400 hover:text-neutral-200")
+                (activeKey === key ? "text-neutral-50" : "text-neutral-400 hover:text-neutral-200")
               }
             >
-              {tab === key && (
+              {activeKey === key && (
                 <motion.span
                   layoutId="tabpill"
                   className="absolute inset-0 rounded-lg bg-white/10"
@@ -143,13 +149,13 @@ export default function App() {
         ) : (
           <AnimatePresence mode="wait">
             <motion.div
-              key={tab}
+              key={activeKey}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.22, ease: "easeOut" }}
             >
-              <Active today={today} trends={trends} />
+              <Active today={today} trends={trends} caps={caps} />
             </motion.div>
           </AnimatePresence>
         )}

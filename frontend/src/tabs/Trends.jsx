@@ -8,6 +8,7 @@ import NoData from "../components/ui/NoData.jsx";
 import Badge from "../components/ui/Badge.jsx";
 import { ACCENT } from "../theme.js";
 import { secsToHms, round, num, titleCase } from "../format.js";
+import { visible } from "../caps.js";
 
 // Best-effort Garmin personal-record type labels + how to format the value.
 const PR_TYPES = {
@@ -29,36 +30,44 @@ function prValue(t, v) {
 const ENDUR_CLASS = ["—", "Untrained", "Novice", "Intermediate", "Trained",
   "Well trained", "Expert", "Superior", "Elite"];
 
-export default function Trends({ today, trends }) {
+export default function Trends({ today, trends, caps }) {
   const perf = today?.perf || {};
   const records = today?.records || [];
   const hrv = (trends?.hrv || []).map((d) => ({ x: d.date, y: d.value }));
   const rhr = (trends?.rhr || []).map((d) => ({ x: d.date, y: d.value }));
+  const show = (cat) => visible(caps, cat);
 
   return (
     <div className="space-y-4">
       <Grid className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {show("hrv") && (
         <Card>
           <SectionTitle sub="14-day overnight average (ms)">HRV trend</SectionTitle>
           <MiniArea data={hrv} color={ACCENT.hrv} height={170} area={false}
             xTickFormatter={(d) => (typeof d === "string" ? d.slice(5) : "")} />
         </Card>
+        )}
+        {show("rhr") && (
         <Card>
           <SectionTitle sub="14-day (bpm)">Resting HR trend</SectionTitle>
           <MiniArea data={rhr} color={ACCENT.rhr} height={170} area={false}
             xTickFormatter={(d) => (typeof d === "string" ? d.slice(5) : "")} />
         </Card>
+        )}
       </Grid>
 
       <Grid className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatTile label="VO₂max" value={perf.vo2max} digits={0} accent="#22c55e" />
-        <StatTile label="Fitness age" value={perf.fitness_age} accent="#38bdf8" />
+        {show("vo2max") && <StatTile label="VO₂max" value={perf.vo2max} digits={0} accent="#22c55e" />}
+        {show("vo2max") && <StatTile label="Fitness age" value={perf.fitness_age} accent="#38bdf8" />}
+        {show("endurance") && (
         <StatTile label="Endurance" value={perf.endurance_score} accent="#a78bfa"
           sub={perf.endurance_class != null ? ENDUR_CLASS[perf.endurance_class] : null} />
-        <StatTile label="Heat acclim." value={perf.heat_acclimation} unit="%" accent="#f97316" />
+        )}
+        {show("acclimation") && <StatTile label="Heat acclim." value={perf.heat_acclimation} unit="%" accent="#f97316" />}
       </Grid>
 
       <Grid className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {show("race_predictions") && (
         <Card>
           <SectionTitle sub="Garmin race time predictions">Race predictions</SectionTitle>
           {["race_5k", "race_10k", "race_hm", "race_marathon"].every((k) => perf[k] == null) ? (
@@ -76,7 +85,9 @@ export default function Trends({ today, trends }) {
             </div>
           )}
         </Card>
+        )}
 
+        {show("personal_records") && (
         <Card>
           <SectionTitle sub="All-time bests">Personal records</SectionTitle>
           {records.length === 0 ? (
@@ -97,6 +108,7 @@ export default function Trends({ today, trends }) {
             </ul>
           )}
         </Card>
+        )}
       </Grid>
     </div>
   );

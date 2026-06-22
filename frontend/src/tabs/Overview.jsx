@@ -7,12 +7,14 @@ import Ring from "../components/ui/Ring.jsx";
 import NoData from "../components/ui/NoData.jsx";
 import { BAND, band, ACCENT } from "../theme.js";
 import { round, secsToHm, titleCase } from "../format.js";
+import { visible } from "../caps.js";
 
-export default function Overview({ today }) {
+export default function Overview({ today, caps }) {
   const m = today?.metrics || {};
   const rec = m.recovery_score;
   const recColor = band(rec) ? BAND[band(rec)] : "#3b82f6";
   const acts = today?.activities || [];
+  const show = (cat) => visible(caps, cat);
 
   return (
     <div className="space-y-4">
@@ -26,9 +28,11 @@ export default function Overview({ today }) {
             sublabel="Estimated · not a Garmin/Whoop score"
           />
         </Card>
-        <Card className="flex items-center justify-center py-6">
-          <AnimatedGauge value={m.sleep_score} label="Sleep" color={ACCENT.sleep} />
-        </Card>
+        {show("sleep") && (
+          <Card className="flex items-center justify-center py-6">
+            <AnimatedGauge value={m.sleep_score} label="Sleep" color={ACCENT.sleep} />
+          </Card>
+        )}
         <Card className="flex items-center justify-center py-6">
           <AnimatedGauge
             value={m.strain_score}
@@ -44,25 +48,30 @@ export default function Overview({ today }) {
       </p>
 
       <Grid className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatTile label="Body Battery" value={m.body_battery} accent={ACCENT.body} />
-        <StatTile label="Resting HR" value={m.rhr} unit="bpm" accent={ACCENT.rhr} />
-        <StatTile label="Training Readiness" value={m.training_readiness_score} accent="#22c55e" />
-        <StatTile label="Stress" value={m.stress_avg} accent={ACCENT.stress} />
-        <StatTile label="Steps" value={m.steps} accent="#a3e635" />
-        <StatTile label="Active kcal" value={m.active_calories} unit="kcal" accent="#fb923c"
-          sub={m.calories != null ? `${round(m.calories)} total` : null} />
-        <StatTile label="Floors" value={m.floors_ascended} digits={0} accent="#38bdf8" />
-        <Card className="flex items-center justify-center">
-          <Ring
-            value={m.intensity_weekly_total}
-            goal={m.intensity_weekly_goal}
-            color="#f97316"
-            center={m.intensity_weekly_total != null ? round(m.intensity_weekly_total) : "—"}
-            label="Intensity min / wk"
-          />
-        </Card>
+        {show("body_battery") && <StatTile label="Body Battery" value={m.body_battery} accent={ACCENT.body} />}
+        {show("rhr") && <StatTile label="Resting HR" value={m.rhr} unit="bpm" accent={ACCENT.rhr} />}
+        {show("training_readiness") && <StatTile label="Training Readiness" value={m.training_readiness_score} accent="#22c55e" />}
+        {show("stress") && <StatTile label="Stress" value={m.stress_avg} accent={ACCENT.stress} />}
+        {show("steps_floors") && <StatTile label="Steps" value={m.steps} accent="#a3e635" />}
+        {show("steps_floors") && (
+          <StatTile label="Active kcal" value={m.active_calories} unit="kcal" accent="#fb923c"
+            sub={m.calories != null ? `${round(m.calories)} total` : null} />
+        )}
+        {show("steps_floors") && <StatTile label="Floors" value={m.floors_ascended} digits={0} accent="#38bdf8" />}
+        {show("intensity_minutes") && (
+          <Card className="flex items-center justify-center">
+            <Ring
+              value={m.intensity_weekly_total}
+              goal={m.intensity_weekly_goal}
+              color="#f97316"
+              center={m.intensity_weekly_total != null ? round(m.intensity_weekly_total) : "—"}
+              label="Intensity min / wk"
+            />
+          </Card>
+        )}
       </Grid>
 
+      {show("activities") && (
       <Card>
         <div className="text-neutral-300 text-sm mb-2">Recent activities</div>
         {acts.length === 0 ? (
@@ -80,6 +89,7 @@ export default function Overview({ today }) {
           </ul>
         )}
       </Card>
+      )}
     </div>
   );
 }

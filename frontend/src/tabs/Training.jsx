@@ -13,6 +13,7 @@ import { ACCENT, LOAD } from "../theme.js";
 import { phrase, round } from "../format.js";
 import { getIntraday } from "../api.js";
 import { useAsync, pairsToXY } from "../useApi.js";
+import { visible } from "../caps.js";
 
 const FACTORS = [
   ["tr_sleep_factor", "Sleep"],
@@ -39,9 +40,10 @@ function FactorBar({ label, value }) {
   );
 }
 
-export default function Training({ today }) {
+export default function Training({ today, caps }) {
   const m = today?.metrics || {};
   const date = m.date;
+  const show = (cat) => visible(caps, cat);
   const stress = useAsync(() => (date ? getIntraday(date, "stress") : null), [date]);
   const stressXY = pairsToXY(stress.data?.series);
 
@@ -55,10 +57,13 @@ export default function Training({ today }) {
           <AnimatedGauge value={m.strain_score} label="Strain" color={ACCENT.strain}
             sublabel="Estimated · custom metric" />
         </Card>
+        {show("training_load_acwr") && (
         <Card className="flex flex-col items-center justify-center py-6 gap-2">
           <AnimatedGauge value={acwr == null ? null : acwr} max={2} digits={1} label="Load ratio (ACWR)"
             color="#38bdf8" sublabel="acute ÷ chronic · optimal 0.8–1.3" />
         </Card>
+        )}
+        {show("training_load_acwr") && (
         <Card className="flex flex-col justify-center gap-2">
           <SectionTitle>Training status</SectionTitle>
           <div>
@@ -69,9 +74,11 @@ export default function Training({ today }) {
             <div><div className="text-neutral-500 text-xs">Chronic load</div><div className="text-neutral-100 font-semibold">{round(m.chronic_load)}</div></div>
           </div>
         </Card>
+        )}
       </Grid>
 
       <Grid className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {show("training_load_acwr") && (
         <Card>
           <SectionTitle sub="Monthly training load by intensity">Load focus</SectionTitle>
           <ZoneBar
@@ -83,6 +90,8 @@ export default function Training({ today }) {
             formatValue={(v) => round(v)}
           />
         </Card>
+        )}
+        {show("training_readiness") && (
         <Card>
           <SectionTitle sub="Garmin Training Readiness contributors">Readiness factors</SectionTitle>
           {FACTORS.every(([k]) => m[k] == null) ? (
@@ -93,19 +102,22 @@ export default function Training({ today }) {
             </div>
           )}
         </Card>
+        )}
       </Grid>
 
+      {show("stress") && (
       <Card>
         <SectionTitle sub="0–100 throughout today">All-day stress</SectionTitle>
         <MiniArea data={stressXY} color={ACCENT.stress} height={170}
           xTickFormatter={(ms) => { const d = new Date(ms); return `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`; }} />
       </Card>
+      )}
 
       <Grid className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatTile label="Intensity (wk)" value={m.intensity_weekly_total} unit={`/ ${m.intensity_weekly_goal ?? "—"}`} accent="#f97316" />
-        <StatTile label="Moderate min" value={m.intensity_moderate} accent="#60a5fa" />
-        <StatTile label="Vigorous min" value={m.intensity_vigorous} accent="#f97316" />
-        <StatTile label="Readiness" value={m.training_readiness_score} accent="#22c55e" />
+        {show("intensity_minutes") && <StatTile label="Intensity (wk)" value={m.intensity_weekly_total} unit={`/ ${m.intensity_weekly_goal ?? "—"}`} accent="#f97316" />}
+        {show("intensity_minutes") && <StatTile label="Moderate min" value={m.intensity_moderate} accent="#60a5fa" />}
+        {show("intensity_minutes") && <StatTile label="Vigorous min" value={m.intensity_vigorous} accent="#f97316" />}
+        {show("training_readiness") && <StatTile label="Readiness" value={m.training_readiness_score} accent="#22c55e" />}
       </Grid>
     </div>
   );

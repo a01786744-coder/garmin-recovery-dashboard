@@ -12,6 +12,7 @@ export const getIntraday = (date, metric) =>
   j(`/api/intraday?date=${encodeURIComponent(date)}&metric=${encodeURIComponent(metric)}`);
 export const getPerformance = () => j("/api/performance");
 export const getActivity = (id) => j(`/api/activity/${id}`);
+export const getCapabilities = () => j("/api/capabilities");
 
 const jsonPost = (path, body) =>
   j(path, {

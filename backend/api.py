@@ -104,6 +104,12 @@ def create_app(db_path=cfg.DB_PATH, client_factory=None,
                 log.warning("activity detail sync failed: %s", type(e).__name__)
         return jsonify(detail or {})
 
+    @app.get("/api/capabilities")
+    def capabilities():
+        from backend import capabilities as caps
+        prof = caps.load_profile(Path(db_path).parent / "capabilities.json")
+        return jsonify(prof or caps.default_profile())
+
     @app.get("/api/sync-status")
     def sync_status():
         return jsonify(db.get_last_sync(db_path) or {"status": "never"})

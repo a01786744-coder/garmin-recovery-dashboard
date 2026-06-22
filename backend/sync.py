@@ -12,16 +12,39 @@ resumes on the next run.
 import datetime as dt
 import logging
 import time
+from pathlib import Path
 
 import backend.db as db
 from backend import recovery as rec
-from backend.config import BASELINE_WINDOW_DAYS
+from backend import capabilities as caps
+from backend.config import BASELINE_WINDOW_DAYS, CAPABILITY_READY_DAYS
 from backend.garmin_client import (
     GarminAuthError, GarminRateLimitError, GarminConnectionError,
     GarminMFARequired,
 )
 
 log = logging.getLogger("sync")
+
+
+def _capability_path(db_path):
+    # Co-locate the profile with the DB so it lands in the same user-data dir.
+    return Path(db_path).parent / "capabilities.json"
+
+
+def _update_capabilities(db_path):
+    """Recompute + persist the capability profile from already-stored data
+    (no extra Garmin calls). Sticky + readiness-gated (see capabilities.py)."""
+    perf = db.get_latest_perf(db_path)
+    profile = caps.compute_profile(
+        db.get_trends(db_path, BASELINE_WINDOW_DAYS),
+        [perf] if perf else [],
+        db.get_personal_records(db_path),
+        db.get_recent_activities(db_path, 10),
+        prev=caps.load_profile(_capability_path(db_path)),
+        ready_days=CAPABILITY_READY_DAYS,
+    )
+    caps.save_profile(_capability_path(db_path), profile)
+    return profile
 
 _FETCH_ERRORS = (GarminAuthError, GarminRateLimitError, GarminConnectionError,
                  GarminMFARequired)
@@ -85,6 +108,10 @@ def run_sync(client, db_path, today=None, backfill_days=BASELINE_WINDOW_DAYS, pa
             db.replace_personal_records(db_path, prs)
     except _FETCH_ERRORS as e:
         log.warning("extras fetch failed: %s", type(e).__name__)
+
+    # Re-probe capabilities from stored data (unlocks tabs an upgraded watch
+    # starts reporting; never an extra Garmin call).
+    _update_capabilities(db_path)
 
     msg = "synced" if status == "ok" else "synced (backfill rate-limited; will resume)"
     db.write_sync_log(db_path, status, msg, availability)

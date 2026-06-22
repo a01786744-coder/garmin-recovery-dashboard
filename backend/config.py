@@ -40,5 +40,8 @@ GARMIN_PASSWORD = os.environ.get("GARMIN_PASSWORD")
 SYNC_INTERVAL_SECONDS = 1800   # 30 minutes
 BASELINE_WINDOW_DAYS = 30
 BASELINE_MIN_DAYS = 14
+# How many full-fetch days we must observe before trusting a "not supported"
+# verdict enough to hide a tab/card (avoids hiding on early/sparse data).
+CAPABILITY_READY_DAYS = 3
 
 DATA_DIR.mkdir(parents=True, exist_ok=True)

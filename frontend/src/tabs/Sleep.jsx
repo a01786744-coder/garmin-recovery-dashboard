@@ -12,6 +12,7 @@ import { ACCENT } from "../theme.js";
 import { minutesToHm, secsToHm, round, msToClock } from "../format.js";
 import { getIntraday } from "../api.js";
 import { useAsync } from "../useApi.js";
+import { visible } from "../caps.js";
 
 const STAGES = [
   ["deep_sleep_s", "Deep", "#1d4ed8"],
@@ -27,9 +28,10 @@ const COMPONENTS = [
   ["sleep_restlessness_score", "Restless", "#2dd4bf"],
 ];
 
-export default function Sleep({ today }) {
+export default function Sleep({ today, caps }) {
   const m = today?.metrics || {};
   const date = m.date;
+  const show = (cat) => visible(caps, cat);
   const hrv = useAsync(() => (date ? getIntraday(date, "hrv") : null), [date]);
   const baseLow = null; // baseline band carried in summary; readings only here
 
@@ -42,6 +44,7 @@ export default function Sleep({ today }) {
         <Card className="flex items-center justify-center py-6">
           <AnimatedGauge value={m.sleep_score} label="Sleep Score" color={ACCENT.sleep} />
         </Card>
+        {show("sleep_detail") && (
         <Card className="md:col-span-2">
           <SectionTitle>Sleep Need</SectionTitle>
           {m.sleep_need_actual == null && m.sleep_need_baseline == null ? (
@@ -63,6 +66,7 @@ export default function Sleep({ today }) {
             </div>
           )}
         </Card>
+        )}
       </Grid>
 
       <Grid className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -73,6 +77,7 @@ export default function Sleep({ today }) {
             formatValue={(v) => secsToHm(v)}
           />
         </Card>
+        {show("sleep_detail") && (
         <Card>
           <SectionTitle>Component scores</SectionTitle>
           <div className="flex justify-around">
@@ -82,8 +87,10 @@ export default function Sleep({ today }) {
             ))}
           </div>
         </Card>
+        )}
       </Grid>
 
+      {show("hrv") && (
       <Card>
         <SectionTitle sub="Overnight HRV readings (ms)">Overnight HRV</SectionTitle>
         <MiniArea
@@ -93,10 +100,11 @@ export default function Sleep({ today }) {
           xTickFormatter={(t) => (typeof t === "string" ? t.slice(11, 16) : "")}
         />
       </Card>
+      )}
 
       <Grid className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatTile label="Overnight HRV avg" value={m.hrv_last_night} unit="ms" accent={ACCENT.hrv} />
-        <StatTile label="Sleep respiration" value={m.resp_sleep} unit="br/min" accent={ACCENT.resp} />
+        {show("hrv") && <StatTile label="Overnight HRV avg" value={m.hrv_last_night} unit="ms" accent={ACCENT.hrv} />}
+        {show("respiration") && <StatTile label="Sleep respiration" value={m.resp_sleep} unit="br/min" accent={ACCENT.resp} />}
         <StatTile label="Total sleep" value={secsToHm(
           (m.deep_sleep_s || 0) + (m.light_sleep_s || 0) + (m.rem_sleep_s || 0)
         )} />
