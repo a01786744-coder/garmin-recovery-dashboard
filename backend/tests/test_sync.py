@@ -23,6 +23,11 @@ def _client(today_hrv=45, today_rhr=48):
         "activity_id": 1, "date": TODAY.isoformat(), "type": "running",
         "duration_s": 1800, "avg_hr": 150, "max_hr": 170,
         "training_load": 120, "aerobic_te": 3.0, "anaerobic_te": 0.5}]
+    # v2 today-only extras — benign defaults so existing tests are unaffected
+    c.fetch_performance.return_value = {}
+    c.fetch_intraday.return_value = {"hr": None, "stress": None,
+                                     "body_battery": None, "hrv": None}
+    c.fetch_personal_records.return_value = []
     return c
 
 def test_run_sync_backfills_then_scores_today(tmp_path):
@@ -66,3 +71,31 @@ def test_run_sync_logs_auth_failure_without_raising(tmp_path):
     result = sync.run_sync(c, p, today=TODAY, backfill_days=2, pacing=0)
     assert result["status"] == "error"
     assert db.get_last_sync(p)["status"] == "error"
+
+
+def test_run_sync_stores_perf_intraday_prs(tmp_path):
+    p = tmp_path / "t.db"
+    db.init_db(p)
+    c = _client()
+    c.fetch_performance.return_value = {"vo2max": 60, "race_5k": 1205, "endurance_score": 6892}
+    c.fetch_intraday.return_value = {"hr": [[1, 48]], "stress": None,
+                                     "body_battery": [[1, 38]], "hrv": None}
+    c.fetch_personal_records.return_value = [{"id": 1, "type_id": 1, "value": 222.5,
+        "activity_id": 9, "activity_name": "Run", "start_time": "t"}]
+    sync.run_sync(c, p, today=TODAY, backfill_days=2, pacing=0)
+    assert db.get_latest_perf(p)["vo2max"] == 60
+    assert db.get_intraday(p, TODAY.isoformat(), "hr") == [[1, 48]]
+    assert db.get_intraday(p, TODAY.isoformat(), "stress") is None   # null metric not stored
+    assert len(db.get_personal_records(p)) == 1
+
+
+def test_sync_activity_detail_caches(tmp_path):
+    p = tmp_path / "t.db"
+    db.init_db(p)
+    c = _client()
+    c.fetch_activity_detail.return_value = {"polyline": [{"lat": 30.1, "lon": -95.5}],
+        "splits": [{"distance": 1000}], "hr_zones": [{"zoneNumber": 1}],
+        "weather": None, "summary": {"minLat": 30.0}}
+    d = sync.sync_activity_detail(c, p, 999)
+    assert d["polyline"][0]["lat"] == 30.1
+    assert db.get_activity_detail(p, 999)["splits"][0]["distance"] == 1000

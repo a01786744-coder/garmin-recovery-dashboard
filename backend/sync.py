@@ -73,6 +73,34 @@ def run_sync(client, db_path, today=None, backfill_days=BASELINE_WINDOW_DAYS, pa
     strain = rec.strain_score([a for a in activities if a.get("date") == today_str])
     db.upsert_daily(db_path, today_str, metrics, recovery, strain)
 
+    # Today-only extras (cost-controlled: not backfilled). Non-fatal — the core
+    # day is already stored, so a failure here must not fail the whole sync.
+    try:
+        db.upsert_perf(db_path, today_str, client.fetch_performance(today_str))
+        for metric, series in client.fetch_intraday(today_str).items():
+            if series:
+                db.upsert_intraday(db_path, today_str, metric, series)
+        prs = client.fetch_personal_records()
+        if prs:
+            db.replace_personal_records(db_path, prs)
+    except _FETCH_ERRORS as e:
+        log.warning("extras fetch failed: %s", type(e).__name__)
+
     msg = "synced" if status == "ok" else "synced (backfill rate-limited; will resume)"
     db.write_sync_log(db_path, status, msg, availability)
     return {"status": status, "message": msg, "availability": availability}
+
+
+def sync_activity_detail(client, db_path, activity_id):
+    """Fetch + cache one activity's detail (route, splits, HR zones, weather).
+    Used on-demand by the API. Returns the stored detail; on a fetch error
+    returns whatever was already cached (never raises)."""
+    try:
+        d = client.fetch_activity_detail(activity_id)
+    except _FETCH_ERRORS as e:
+        log.warning("activity detail fetch failed: %s", type(e).__name__)
+        return db.get_activity_detail(db_path, activity_id)
+    db.upsert_activity_detail(db_path, activity_id, polyline_json=d.get("polyline"),
+                              splits_json=d.get("splits"), hr_zones_json=d.get("hr_zones"),
+                              weather_json=d.get("weather"), summary_json=d.get("summary"))
+    return db.get_activity_detail(db_path, activity_id)
