@@ -6,7 +6,7 @@ from flask import Flask, jsonify, request
 
 import backend.config as cfg
 import backend.db as db
-from backend.sync import run_sync
+from backend.sync import run_sync, sync_activity_detail
 
 log = logging.getLogger("api")
 
@@ -39,6 +39,8 @@ def create_app(db_path=cfg.DB_PATH, client_factory=None):
         return jsonify({
             "metrics": metrics,
             "activities": db.get_recent_activities(db_path, 10),
+            "perf": db.get_latest_perf(db_path),
+            "records": db.get_personal_records(db_path),
             "sync": db.get_last_sync(db_path),
         })
 
@@ -46,6 +48,34 @@ def create_app(db_path=cfg.DB_PATH, client_factory=None):
     def trends():
         days = int(request.args.get("days", 30))
         return jsonify(_trends(days))
+
+    @app.get("/api/intraday")
+    def intraday():
+        date = request.args.get("date")
+        metric = request.args.get("metric")
+        return jsonify({
+            "date": date, "metric": metric,
+            "series": db.get_intraday(db_path, date, metric) if date and metric else None,
+        })
+
+    @app.get("/api/performance")
+    def performance():
+        return jsonify({
+            "perf": db.get_latest_perf(db_path),
+            "records": db.get_personal_records(db_path),
+        })
+
+    @app.get("/api/activity/<int:activity_id>")
+    def activity(activity_id):
+        detail = db.get_activity_detail(db_path, activity_id)
+        if detail is None and client_factory is not None:
+            client = client_factory()
+            try:
+                client.login()
+                detail = sync_activity_detail(client, db_path, activity_id)
+            except Exception as e:  # never crash; return whatever we have
+                log.warning("activity detail sync failed: %s", type(e).__name__)
+        return jsonify(detail or {})
 
     @app.get("/api/sync-status")
     def sync_status():
