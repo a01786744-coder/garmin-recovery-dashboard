@@ -37,6 +37,17 @@ class GarminMFARequired(Exception):
         self.client_state = client_state
 
 
+def _primary_device_value(device_map):
+    """Garmin nests several training metrics under a {deviceId: {...}} map.
+    Return the primary device's value (else the first), or {} if none."""
+    if not isinstance(device_map, dict) or not device_map:
+        return {}
+    for v in device_map.values():
+        if isinstance(v, dict) and v.get("primaryTrainingDevice"):
+            return v
+    return next(iter(device_map.values()), {}) or {}
+
+
 class GarminClient:
     def __init__(self, email, password, tokenstore):
         self._email = email
@@ -121,6 +132,9 @@ class GarminClient:
         hrv = self._safe(lambda: api.get_hrv_data(date_str), None)
         tr = self._safe(lambda: api.get_training_readiness(date_str), []) or []
         maxmet = self._safe(lambda: api.get_max_metrics(date_str), None)
+        intensity = self._safe(lambda: api.get_intensity_minutes_data(date_str), {}) or {}
+        resp = self._safe(lambda: api.get_respiration_data(date_str), {}) or {}
+        tstat = self._safe(lambda: api.get_training_status(date_str), {}) or {}
 
         sdto = (sleep or {}).get("dailySleepDTO", {}) or {}
         hrv_sum = (hrv or {}).get("hrvSummary", {}) if hrv else {}
@@ -131,11 +145,19 @@ class GarminClient:
         elif isinstance(maxmet, dict):
             maxgen = maxmet.get("generic", {}) or {}
 
+        ts_data = _primary_device_value(
+            (tstat.get("mostRecentTrainingStatus") or {}).get("latestTrainingStatusData") or {})
+        acute = ts_data.get("acuteTrainingLoadDTO", {}) or {}
+        load_bal = _primary_device_value(
+            (tstat.get("mostRecentTrainingLoadBalance") or {}).get("metricsTrainingLoadBalanceDTOMap") or {})
+        scores = sdto.get("sleepScores") or {}
+        sleep_need = sdto.get("sleepNeed") or {}
+
         metrics = {
             "hrv_last_night": hrv_sum.get("lastNightAvg"),
             "hrv_status": hrv_sum.get("status"),
             "rhr": summary.get("restingHeartRate"),
-            "sleep_score": (sdto.get("sleepScores", {}) or {}).get("overall", {}).get("value"),
+            "sleep_score": (scores.get("overall") or {}).get("value"),
             "deep_sleep_s": sdto.get("deepSleepSeconds"),
             "light_sleep_s": sdto.get("lightSleepSeconds"),
             "rem_sleep_s": sdto.get("remSleepSeconds"),
@@ -146,6 +168,39 @@ class GarminClient:
             "training_readiness_score": tr0.get("score"),
             "stress_avg": summary.get("averageStressLevel"),
             "vo2max": maxgen.get("vo2MaxValue"),
+            # v2 expansion
+            "floors_ascended": summary.get("floorsAscended"),
+            "intensity_moderate": summary.get("moderateIntensityMinutes"),
+            "intensity_vigorous": summary.get("vigorousIntensityMinutes"),
+            "intensity_weekly_total": intensity.get("weeklyTotal"),
+            "intensity_weekly_goal": intensity.get("weekGoal"),
+            "highly_active_s": summary.get("highlyActiveSeconds"),
+            "active_s": summary.get("activeSeconds"),
+            "sedentary_s": summary.get("sedentarySeconds"),
+            "active_calories": summary.get("activeKilocalories"),
+            "resting_calories": summary.get("bmrKilocalories"),
+            "distance_m": summary.get("totalDistanceMeters"),
+            "resp_waking": resp.get("avgWakingRespirationValue"),
+            "resp_sleep": resp.get("avgSleepRespirationValue"),
+            "sleep_need_actual": sleep_need.get("actual"),
+            "sleep_need_baseline": sleep_need.get("baseline"),
+            "sleep_deep_score": (scores.get("deep") or {}).get("value"),
+            "sleep_rem_score": (scores.get("rem") or {}).get("value"),
+            "sleep_light_score": (scores.get("light") or {}).get("value"),
+            "sleep_restlessness_score": (scores.get("restlessness") or {}).get("value"),
+            "awake_count": sdto.get("awakeCount"),
+            "training_status_label": ts_data.get("trainingStatusFeedbackPhrase"),
+            "acwr_ratio": acute.get("dailyAcuteChronicWorkloadRatio"),
+            "acute_load": acute.get("dailyTrainingLoadAcute"),
+            "chronic_load": acute.get("dailyTrainingLoadChronic"),
+            "load_aerobic_low": load_bal.get("monthlyLoadAerobicLow"),
+            "load_aerobic_high": load_bal.get("monthlyLoadAerobicHigh"),
+            "load_anaerobic": load_bal.get("monthlyLoadAnaerobic"),
+            "tr_sleep_factor": tr0.get("sleepScoreFactorPercent"),
+            "tr_recovery_factor": tr0.get("recoveryTimeFactorPercent"),
+            "tr_acwr_factor": tr0.get("acwrFactorPercent"),
+            "tr_hrv_factor": tr0.get("hrvFactorPercent"),
+            "tr_stress_factor": tr0.get("stressHistoryFactorPercent"),
         }
         availability = {k: ("available" if v is not None else "unavailable")
                         for k, v in metrics.items()}
@@ -169,3 +224,79 @@ class GarminClient:
                 "anaerobic_te": a.get("anaerobicTrainingEffect"),
             })
         return out
+
+    def fetch_performance(self, date_str):
+        """VO2max, fitness age, race predictions, endurance, acclimation."""
+        self._fetch_errors = 0
+        api = self.api
+        tstat = self._safe(lambda: api.get_training_status(date_str), {}) or {}
+        v2 = tstat.get("mostRecentVO2Max") or {}
+        generic = v2.get("generic") or {}
+        accl = v2.get("heatAltitudeAcclimation") or {}
+        maxmet = self._safe(lambda: api.get_max_metrics(date_str), None)
+        mg = {}
+        if isinstance(maxmet, list) and maxmet:
+            mg = (maxmet[0] or {}).get("generic", {}) or {}
+        race = self._safe(lambda: api.get_race_predictions(), {}) or {}
+        endur = self._safe(lambda: api.get_endurance_score(date_str), {}) or {}
+        return {
+            "vo2max": generic.get("vo2MaxValue") or mg.get("vo2MaxValue"),
+            "vo2max_cycling": (v2.get("cycling") or {}).get("vo2MaxValue"),
+            "fitness_age": generic.get("fitnessAge") or mg.get("fitnessAge"),
+            "race_5k": race.get("time5K"), "race_10k": race.get("time10K"),
+            "race_hm": race.get("timeHalfMarathon"), "race_marathon": race.get("timeMarathon"),
+            "endurance_score": endur.get("overallScore"),
+            "endurance_class": endur.get("classification"),
+            "heat_acclimation": accl.get("heatAcclimationPercentage"),
+            "altitude_acclimation": accl.get("altitudeAcclimation"),
+        }
+
+    def fetch_personal_records(self):
+        self._fetch_errors = 0
+        api = self.api
+        raw = self._safe(lambda: api.get_personal_record(), []) or []
+        out = []
+        for r in raw:
+            r = r or {}
+            out.append({
+                "id": r.get("id"), "type_id": r.get("typeId"), "value": r.get("value"),
+                "activity_id": r.get("activityId"), "activity_name": r.get("activityName"),
+                "start_time": (r.get("prStartTimeGmtFormatted")
+                               or r.get("activityStartDateTimeLocalFormatted")),
+            })
+        return out
+
+    def fetch_intraday(self, date_str):
+        """All-day curves: HR, stress, body battery, overnight HRV readings."""
+        self._fetch_errors = 0
+        api = self.api
+        hr = self._safe(lambda: api.get_heart_rates(date_str), {}) or {}
+        stress = self._safe(lambda: api.get_stress_data(date_str), {}) or {}
+        bb = self._safe(lambda: api.get_body_battery(date_str), []) or []
+        hrv = self._safe(lambda: api.get_hrv_data(date_str), {}) or {}
+        bb0 = bb[0] if isinstance(bb, list) and bb else {}
+        return {
+            "hr": hr.get("heartRateValues"),
+            "stress": stress.get("stressValuesArray"),
+            "body_battery": bb0.get("bodyBatteryValuesArray"),
+            "hrv": hrv.get("hrvReadings"),
+        }
+
+    def fetch_activity_detail(self, activity_id, maxpoly=2000):
+        """Route polyline, splits, HR-zone distribution, weather for one activity."""
+        self._fetch_errors = 0
+        api = self.api
+        det = self._safe(lambda: api.get_activity_details(activity_id, maxpoly=maxpoly), {}) or {}
+        geo = det.get("geoPolylineDTO", {}) or {}
+        splits = self._safe(lambda: api.get_activity_splits(activity_id), {}) or {}
+        zones = self._safe(lambda: api.get_activity_hr_in_timezones(activity_id), []) or []
+        weather = self._safe(lambda: api.get_activity_weather(activity_id), None)
+        summary = {k: geo.get(k) for k in
+                   ("minLat", "maxLat", "minLon", "maxLon", "startPoint", "endPoint")}
+        return {
+            "polyline": geo.get("polyline"),
+            "splits": splits.get("lapDTOs"),
+            "hr_zones": zones if isinstance(zones, list) else None,
+            "weather": weather,
+            "summary": summary,
+        }
