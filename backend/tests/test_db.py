@@ -61,3 +61,51 @@ def test_sync_log_roundtrip(tmp_path):
     last = db.get_last_sync(p)
     assert last["status"] == "ok"
     assert last["availability"]["hrv_last_night"] == "available"
+
+
+def test_expanded_daily_fields_roundtrip(tmp_path):
+    p = tmp_path / "t.db"; db.init_db(p)
+    m = {k: None for k in db.DAILY_FIELDS}
+    m["acwr_ratio"] = 0.8; m["training_status_label"] = "PRODUCTIVE"; m["floors_ascended"] = 3.2
+    db.upsert_daily(p, "2026-06-21", m, recovery=70, strain=40)
+    row = db.get_daily(p, "2026-06-21")
+    assert row["acwr_ratio"] == 0.8
+    assert row["training_status_label"] == "PRODUCTIVE"
+    assert row["load_anaerobic"] is None      # NULL preserved
+
+
+def test_intraday_roundtrip(tmp_path):
+    p = tmp_path / "t.db"; db.init_db(p)
+    series = [[1782018000000, 48], [1782018120000, 50]]
+    db.upsert_intraday(p, "2026-06-21", "hr", series)
+    assert db.get_intraday(p, "2026-06-21", "hr") == series
+    assert db.get_intraday(p, "2026-06-21", "missing") is None
+
+
+def test_perf_metrics_latest(tmp_path):
+    p = tmp_path / "t.db"; db.init_db(p)
+    db.upsert_perf(p, "2026-06-20", {"vo2max": 60, "race_5k": 1205, "endurance_score": 6892})
+    latest = db.get_latest_perf(p)
+    assert latest["vo2max"] == 60 and latest["race_5k"] == 1205
+
+
+def test_personal_records_replace(tmp_path):
+    p = tmp_path / "t.db"; db.init_db(p)
+    db.replace_personal_records(p, [{"id": 1, "type_id": 1, "value": 222.5,
+        "activity_id": 9, "activity_name": "Run", "start_time": "2026-04-19T06:53:52.0"}])
+    db.replace_personal_records(p, [{"id": 1, "type_id": 1, "value": 220.0,
+        "activity_id": 9, "activity_name": "Run", "start_time": "2026-04-19T06:53:52.0"}])
+    recs = db.get_personal_records(p)
+    assert len(recs) == 1 and recs[0]["value"] == 220.0
+
+
+def test_activity_detail_roundtrip(tmp_path):
+    p = tmp_path / "t.db"; db.init_db(p)
+    db.upsert_activity_detail(p, 23318459088,
+        polyline_json=[{"lat": 30.1, "lon": -95.5}], splits_json=[{"distance": 1000}],
+        hr_zones_json=[{"zoneNumber": 1, "secsInZone": 193}], weather_json=None,
+        summary_json={"distance": 8000})
+    d = db.get_activity_detail(p, 23318459088)
+    assert d["polyline"][0]["lat"] == 30.1
+    assert d["hr_zones"][0]["zoneNumber"] == 1
+    assert d["weather"] is None
