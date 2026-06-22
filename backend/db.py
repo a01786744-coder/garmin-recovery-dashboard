@@ -102,6 +102,32 @@ def clear_all_data(path):
             c.execute(f"DELETE FROM {t}")
 
 
+def count_daily(path):
+    with _conn(path) as c:
+        return c.execute("SELECT COUNT(*) AS n FROM daily_metrics").fetchone()["n"]
+
+
+def get_all_daily(path):
+    with _conn(path) as c:
+        rows = c.execute("SELECT * FROM daily_metrics ORDER BY date").fetchall()
+        return [dict(r) for r in rows]
+
+
+def export_all(path):
+    """All of the user's own stored data, for export. Intraday/activity-detail
+    blobs are excluded (large, derived); the scalar time series + activities +
+    performance + records are what's useful out of the app."""
+    with _conn(path) as c:
+        def rows(sql):
+            return [dict(r) for r in c.execute(sql).fetchall()]
+        return {
+            "daily_metrics": rows("SELECT * FROM daily_metrics ORDER BY date"),
+            "activities": rows("SELECT * FROM activities ORDER BY date"),
+            "perf_metrics": rows("SELECT * FROM perf_metrics ORDER BY date"),
+            "personal_records": rows("SELECT * FROM personal_records ORDER BY type_id"),
+        }
+
+
 def upsert_daily(path, date, metrics, recovery, strain):
     cols = ["date"] + DAILY_FIELDS + ["recovery_score", "strain_score"]
     vals = [date] + [metrics.get(f) for f in DAILY_FIELDS] + [recovery, strain]

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
+import { exportUrl } from "./api.js";
 
 const TABS = [
   ["overview", "Overview"],
@@ -77,6 +78,21 @@ export default function Settings({ settings, onChange, onSwitchAccount, onClose 
             <p className="mt-1 text-[11px] text-neutral-600">
               Tabs your watch doesn't report are hidden automatically; this is an extra manual filter.
             </p>
+          </div>
+
+          {/* Export */}
+          <div className="border-t border-white/10 pt-4">
+            <div className="mb-2 text-sm text-neutral-300">Export your data</div>
+            <div className="flex gap-2">
+              <a href={exportUrl("json")} download
+                className="rounded-lg border border-white/10 bg-neutral-800/80 px-3 py-1.5 text-sm text-neutral-200 hover:bg-neutral-700">
+                JSON
+              </a>
+              <a href={exportUrl("csv")} download
+                className="rounded-lg border border-white/10 bg-neutral-800/80 px-3 py-1.5 text-sm text-neutral-200 hover:bg-neutral-700">
+                CSV (daily)
+              </a>
+            </div>
           </div>
 
           {/* Account */}

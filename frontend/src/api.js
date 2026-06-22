@@ -29,3 +29,4 @@ export const postSwitchAccount = () => jsonPost("/api/auth/switch-account", {});
 
 export const getSettings = () => j("/api/settings");
 export const postSettings = (partial) => jsonPost("/api/settings", partial);
+export const exportUrl = (fmt) => `${BASE}/api/export/${fmt}`;

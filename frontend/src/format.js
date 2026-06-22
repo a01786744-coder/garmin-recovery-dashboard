@@ -62,6 +62,16 @@ export function msToClock(ms) {
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
+// Garmin "GMT" timestamp string (UTC, e.g. "2026-06-21T07:13:43.0") -> local
+// "HH:mm". These carry no zone marker, so we treat them as UTC explicitly and
+// let the Date render in the user's locale.
+export function gmtToLocalClock(s) {
+  if (!s) return DASH;
+  const d = new Date(s.replace(" ", "T").replace(/\.\d+$/, "") + "Z");
+  if (isNaN(d.getTime())) return DASH;
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
 export function titleCase(s) {
   if (!s) return "";
   return s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());

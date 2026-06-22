@@ -34,14 +34,17 @@ export default function App() {
   const [syncing, setSyncing] = useState(false);
   const [ready, setReady] = useState(false);
   const [authed, setAuthed] = useState(null); // null = unknown, false = show login
+  const [authError, setAuthError] = useState(false);
 
   // Resolve auth status, retrying while the backend is still starting up.
   const checkAuth = useCallback(async (attempt = 0) => {
     try {
       const { authenticated } = await getAuthStatus();
       setAuthed(authenticated);
+      setAuthError(false);
     } catch (e) {
       if (attempt < 10) setTimeout(() => checkAuth(attempt + 1), 1000);
+      else setAuthError(true);   // stop spinning; show an actionable message
     }
   }, []);
 
@@ -108,8 +111,21 @@ export default function App() {
   if (authed === false) return <Login onSuccess={onLoggedIn} />;
   if (authed === null) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-neutral-700 border-t-emerald-500" />
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 p-6 text-center">
+        {authError ? (
+          <>
+            <p className="max-w-xs text-sm text-neutral-400">
+              Can't reach the local service. It may still be starting, or the backend stopped —
+              try reopening the app.
+            </p>
+            <button onClick={() => { setAuthError(false); checkAuth(); }}
+              className="rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-emerald-500">
+              Try again
+            </button>
+          </>
+        ) : (
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-neutral-700 border-t-emerald-500" />
+        )}
       </div>
     );
   }
@@ -174,6 +190,14 @@ export default function App() {
           ))}
         </nav>
 
+        {today?.progress && !today.progress.complete && (
+          <div className="mb-4 flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-2.5 text-sm text-emerald-200">
+            <span className="h-3 w-3 shrink-0 animate-spin rounded-full border-2 border-emerald-300/40 border-t-emerald-300" />
+            Syncing your Garmin history… {today.progress.days_synced} of {today.progress.target_days} days.
+            This can take a few minutes on first run, and resumes automatically if Garmin rate-limits.
+          </div>
+        )}
+
         {!ready ? (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             {[0, 1, 2].map((i) => (
@@ -193,6 +217,10 @@ export default function App() {
             </motion.div>
           </AnimatePresence>
         )}
+
+        <footer className="mt-10 text-center text-[10px] text-neutral-600">
+          Unofficial Garmin Connect client — for personal insight only, not medical advice.
+        </footer>
       </div>
     </div>
   );

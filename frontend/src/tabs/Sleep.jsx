@@ -9,7 +9,7 @@ import MiniArea from "../components/ui/MiniArea.jsx";
 import SectionTitle from "../components/ui/SectionTitle.jsx";
 import NoData from "../components/ui/NoData.jsx";
 import { ACCENT } from "../theme.js";
-import { minutesToHm, secsToHm, round, msToClock } from "../format.js";
+import { minutesToHm, secsToHm, round, gmtToLocalClock } from "../format.js";
 import { getIntraday } from "../api.js";
 import { useAsync } from "../useApi.js";
 import { visible } from "../caps.js";
@@ -97,7 +97,7 @@ export default function Sleep({ today, caps }) {
           data={hrvSeries?.map((d) => ({ x: d.x, y: d.y })) || null}
           color={ACCENT.hrv}
           height={180}
-          xTickFormatter={(t) => (typeof t === "string" ? t.slice(11, 16) : "")}
+          xTickFormatter={(t) => (typeof t === "string" ? gmtToLocalClock(t) : "")}
         />
       </Card>
       )}

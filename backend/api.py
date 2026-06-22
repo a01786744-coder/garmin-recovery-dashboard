@@ -1,16 +1,36 @@
 """Local Flask API serving cached SQLite data + manual/scheduled sync + auth."""
 import os
+import re
 import threading
 import logging
 from pathlib import Path
 
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, Response
 
 import backend.config as cfg
 import backend.db as db
 from backend.sync import run_sync, sync_activity_detail
 
 log = logging.getLogger("api")
+
+
+class RedactingFilter(logging.Filter):
+    """Defense-in-depth log scrubbing: credentials and tokens are never logged
+    intentionally, but this strips anything credential/token-shaped from every
+    log line before it reaches the file."""
+    _patterns = [
+        re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+"),                      # emails
+        re.compile(r"(?i)(password|token|authorization)[\"']?\s*[:=]\s*\S+"),
+        re.compile(r"[A-Za-z0-9_\-]{40,}"),                          # long token-ish strings
+    ]
+
+    def filter(self, record):
+        msg = record.getMessage()
+        for p in self._patterns:
+            msg = p.sub("[REDACTED]", msg)
+        record.msg = msg
+        record.args = ()
+        return True
 
 
 def _has_tokens(tokenstore):
@@ -61,14 +81,25 @@ def create_app(db_path=cfg.DB_PATH, client_factory=None,
 
     @app.get("/api/today")
     def today():
+        from backend import settings as st
         rows = db.get_trends(db_path, 1)
         metrics = rows[-1] if rows else None
+        sync = db.get_last_sync(db_path)
+        window = st.load_settings(Path(db_path).parent / "settings.json")["baseline_window_days"]
         return jsonify({
             "metrics": metrics,
             "activities": db.get_recent_activities(db_path, 10),
             "perf": db.get_latest_perf(db_path),
             "records": db.get_personal_records(db_path),
-            "sync": db.get_last_sync(db_path),
+            "sync": sync,
+            "progress": {
+                # Onboarding: the first full backfill fills history over time
+                # (paced, 429-tolerant). "complete" once a sync finished without
+                # a rate-limit interruption (run_sync sets status "ok" only then).
+                "days_synced": db.count_daily(db_path),
+                "target_days": window,
+                "complete": (sync or {}).get("status") == "ok",
+            },
         })
 
     @app.get("/api/trends")
@@ -211,6 +242,28 @@ def create_app(db_path=cfg.DB_PATH, client_factory=None,
         data = request.get_json(silent=True) or {}
         return jsonify(st.save_settings(Path(db_path).parent / "settings.json", data))
 
+    # --- Export the user's own data (local download) ---
+
+    @app.get("/api/export/json")
+    def export_json():
+        import json as _json
+        body = _json.dumps(db.export_all(db_path), indent=2, default=str)
+        return Response(body, mimetype="application/json", headers={
+            "Content-Disposition": "attachment; filename=garmin-dashboard-export.json"})
+
+    @app.get("/api/export/csv")
+    def export_csv():
+        import csv
+        import io
+        cols = ["date"] + db.DAILY_FIELDS + ["recovery_score", "strain_score"]
+        buf = io.StringIO()
+        w = csv.DictWriter(buf, fieldnames=cols, extrasaction="ignore")
+        w.writeheader()
+        for r in db.get_all_daily(db_path):
+            w.writerow(r)
+        return Response(buf.getvalue(), mimetype="text/csv", headers={
+            "Content-Disposition": "attachment; filename=garmin-dashboard-daily.csv"})
+
     return app
 
 
@@ -235,14 +288,13 @@ def _scheduled_loop(db_path, client_factory):
 
 def main():
     # Logs go to the user-data dir as well as stdout (Electron inherits stdio).
-    # Redaction/scrubbing of this file is handled in Phase 5.
-    logging.basicConfig(
-        level=logging.INFO,
-        handlers=[
-            logging.StreamHandler(),
-            logging.FileHandler(cfg.LOG_PATH, encoding="utf-8"),
-        ],
-    )
+    # A redaction filter scrubs any credential/token-shaped text from both.
+    redactor = RedactingFilter()
+    stream_handler = logging.StreamHandler()
+    file_handler = logging.FileHandler(cfg.LOG_PATH, encoding="utf-8")
+    for h in (stream_handler, file_handler):
+        h.addFilter(redactor)
+    logging.basicConfig(level=logging.INFO, handlers=[stream_handler, file_handler])
     from backend.garmin_client import GarminClient
 
     def factory():
