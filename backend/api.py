@@ -1,6 +1,8 @@
-"""Local Flask API serving cached SQLite data + manual/scheduled sync."""
+"""Local Flask API serving cached SQLite data + manual/scheduled sync + auth."""
+import os
 import threading
 import logging
+from pathlib import Path
 
 from flask import Flask, jsonify, request
 
@@ -11,9 +13,34 @@ from backend.sync import run_sync, sync_activity_detail
 log = logging.getLogger("api")
 
 
-def create_app(db_path=cfg.DB_PATH, client_factory=None):
+def _has_tokens(tokenstore):
+    """Authenticated iff the token store holds at least one token file. Cheap
+    (no network); expired tokens still count as 'have an account' — a failed
+    refresh during sync is what triggers a re-login prompt."""
+    p = Path(tokenstore)
+    return p.is_dir() and any(f.is_file() for f in p.iterdir())
+
+
+def _clear_tokens(tokenstore):
+    """Remove stored token files (logout). Leaves the directory in place."""
+    p = Path(tokenstore)
+    if not p.is_dir():
+        return
+    for f in p.iterdir():
+        if f.is_file():
+            try:
+                f.unlink()
+            except OSError:
+                pass
+
+
+def create_app(db_path=cfg.DB_PATH, client_factory=None,
+               tokenstore=cfg.TOKENSTORE_DIR, auth_client_factory=None):
     app = Flask(__name__, static_folder=None)
     db.init_db(db_path)
+    # Holds the in-progress GarminClient between /auth/login and /auth/mfa
+    # (single-user local app, so one pending login at a time).
+    pending = {}
 
     @app.after_request
     def _local_cors(resp):
@@ -93,6 +120,64 @@ def create_app(db_path=cfg.DB_PATH, client_factory=None):
             return jsonify({"status": "error", "message": type(e).__name__}), 200
         return jsonify(run_sync(client, db_path))
 
+    # --- Auth: in-app login / MFA / logout (no file editing by the user) ---
+
+    @app.get("/api/auth/status")
+    def auth_status():
+        return jsonify({"authenticated": _has_tokens(tokenstore)})
+
+    @app.post("/api/auth/login")
+    def auth_login():
+        from backend.garmin_client import (
+            GarminClient, GarminMFARequired, GarminAuthError,
+            GarminRateLimitError, GarminConnectionError,
+        )
+        data = request.get_json(silent=True) or {}
+        email, password = data.get("email"), data.get("password")
+        if not email or not password:
+            return jsonify({"status": "error", "message": "missing_credentials"}), 400
+        make = auth_client_factory or (lambda e, p, ts: GarminClient(e, p, ts))
+        client = make(email, password, tokenstore)
+        try:
+            client.login()  # persists tokens on success
+        except GarminMFARequired as e:
+            pending["client"] = client
+            pending["state"] = e.client_state
+            return jsonify({"status": "mfa_required"})
+        except GarminAuthError:
+            return jsonify({"status": "error", "message": "authentication_failed"})
+        except GarminRateLimitError:
+            return jsonify({"status": "error", "message": "rate_limited"})
+        except GarminConnectionError:
+            return jsonify({"status": "error", "message": "connection_error"})
+        # Success: only tokens are persisted; drop the client (and its password
+        # reference) from memory now that we no longer need credentials.
+        pending.clear()
+        del client
+        return jsonify({"status": "ok"})
+
+    @app.post("/api/auth/mfa")
+    def auth_mfa():
+        from backend.garmin_client import GarminAuthError
+        data = request.get_json(silent=True) or {}
+        code = data.get("code")
+        client = pending.get("client")
+        if not client or not code:
+            return jsonify({"status": "error", "message": "no_pending_login"}), 400
+        try:
+            client.complete_mfa(pending.get("state"), code)  # persists tokens
+        except GarminAuthError:
+            # keep pending so the user can re-enter the code
+            return jsonify({"status": "error", "message": "mfa_failed"})
+        pending.clear()
+        return jsonify({"status": "ok"})
+
+    @app.post("/api/auth/logout")
+    def auth_logout():
+        _clear_tokens(tokenstore)
+        pending.clear()
+        return jsonify({"status": "ok"})
+
     return app
 
 
@@ -124,7 +209,9 @@ def main():
     from backend.garmin_client import GarminClient
 
     def factory():
-        return GarminClient(cfg.GARMIN_EMAIL, cfg.GARMIN_PASSWORD, cfg.TOKENSTORE_DIR)
+        # Auto-sync resumes from stored tokens only — credentials enter solely
+        # through the in-app login flow (/api/auth/login), never from .env.
+        return GarminClient(None, None, cfg.TOKENSTORE_DIR)
 
     app = create_app(cfg.DB_PATH, client_factory=factory)
     _scheduled_loop(cfg.DB_PATH, factory)   # immediate + every 30 min

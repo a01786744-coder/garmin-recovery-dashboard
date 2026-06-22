@@ -66,7 +66,7 @@ class GarminClient:
             self._api = Garmin(self._email, self._password, return_on_mfa=True)
             needs_mfa, client_state = self._api.login(self._tokenstore)
         except GarminConnectAuthenticationError:
-            raise GarminAuthError("Garmin authentication failed (check .env credentials)")
+            raise GarminAuthError("Garmin authentication failed (check your email and password)")
         except GarminConnectTooManyRequestsError:
             raise GarminRateLimitError("Garmin rate limit hit (HTTP 429)")
         except GarminConnectConnectionError:
@@ -89,6 +89,16 @@ class GarminClient:
             self._api.client.dump(self._tokenstore)
         except Exception:
             log.warning("could not persist Garmin tokens")
+            return
+        # Tokens are sensitive. Restrict to owner-only on POSIX; on Windows the
+        # user-data dir already carries per-user ACLs from the user profile.
+        try:
+            for name in os.listdir(self._tokenstore):
+                fp = os.path.join(self._tokenstore, name)
+                if os.path.isfile(fp):
+                    os.chmod(fp, 0o600)
+        except Exception:
+            pass
 
     @property
     def api(self):

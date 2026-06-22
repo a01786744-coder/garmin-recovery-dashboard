@@ -12,3 +12,15 @@ export const getIntraday = (date, metric) =>
   j(`/api/intraday?date=${encodeURIComponent(date)}&metric=${encodeURIComponent(metric)}`);
 export const getPerformance = () => j("/api/performance");
 export const getActivity = (id) => j(`/api/activity/${id}`);
+
+const jsonPost = (path, body) =>
+  j(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body || {}),
+  });
+
+export const getAuthStatus = () => j("/api/auth/status");
+export const postLogin = (email, password) => jsonPost("/api/auth/login", { email, password });
+export const postMfa = (code) => jsonPost("/api/auth/mfa", { code });
+export const postLogout = () => jsonPost("/api/auth/logout", {});

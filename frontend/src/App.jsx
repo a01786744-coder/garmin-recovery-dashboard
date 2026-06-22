@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { getToday, getTrends, postSync } from "./api.js";
+import { getToday, getTrends, postSync, getAuthStatus, postLogout } from "./api.js";
 import SyncHeader from "./components/SyncHeader.jsx";
+import Login from "./Login.jsx";
 import Overview from "./tabs/Overview.jsx";
 import Sleep from "./tabs/Sleep.jsx";
 import Training from "./tabs/Training.jsx";
@@ -24,12 +25,28 @@ export default function App() {
   const [tab, setTab] = useState("overview");
   const [syncing, setSyncing] = useState(false);
   const [ready, setReady] = useState(false);
+  const [authed, setAuthed] = useState(null); // null = unknown, false = show login
+
+  // Resolve auth status, retrying while the backend is still starting up.
+  const checkAuth = useCallback(async (attempt = 0) => {
+    try {
+      const { authenticated } = await getAuthStatus();
+      setAuthed(authenticated);
+    } catch (e) {
+      if (attempt < 10) setTimeout(() => checkAuth(attempt + 1), 1000);
+    }
+  }, []);
 
   const load = useCallback(async () => {
     try {
       const [t, tr] = await Promise.all([getToday(), getTrends(14)]);
       setToday(t);
       setTrends(tr);
+      // Silent token refresh is handled by the backend; only when a sync truly
+      // fails to authenticate do we send the user back to the login screen.
+      if (t?.sync?.status === "error" && t.sync.message === "GarminAuthError") {
+        setAuthed(false);
+      }
     } catch (e) {
       /* keep last good data; never crash */
     } finally {
@@ -37,22 +54,44 @@ export default function App() {
     }
   }, []);
 
+  useEffect(() => { checkAuth(); }, [checkAuth]);
+
   useEffect(() => {
+    if (authed !== true) return;
     load();
     const id = setInterval(load, 60000);
     return () => clearInterval(id);
-  }, [load]);
+  }, [authed, load]);
+
+  const onLoggedIn = async () => {
+    setAuthed(true);
+    setReady(false);
+    try { await postSync(); } catch (e) { /* surfaced via sync status */ }
+    load();
+  };
+
+  const logout = async () => {
+    try { await postLogout(); } catch (e) { /* ignore */ }
+    setToday(null);
+    setTrends(null);
+    setAuthed(false);
+  };
 
   const retry = async () => {
     setSyncing(true);
-    try {
-      await postSync();
-    } catch (e) {
-      /* surfaced via sync status */
-    }
+    try { await postSync(); } catch (e) { /* surfaced via sync status */ }
     await load();
     setSyncing(false);
   };
+
+  if (authed === false) return <Login onSuccess={onLoggedIn} />;
+  if (authed === null) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-neutral-700 border-t-emerald-500" />
+      </div>
+    );
+  }
 
   const Active = VIEWS[tab];
 
@@ -64,7 +103,13 @@ export default function App() {
             <h1 className="text-xl font-bold tracking-tight">Recovery Dashboard</h1>
             <p className="text-[11px] text-neutral-600">Garmin Forerunner 970 · local &amp; private</p>
           </div>
-          <SyncHeader sync={today?.sync} onRetry={retry} syncing={syncing} />
+          <div className="flex items-center gap-3">
+            <SyncHeader sync={today?.sync} onRetry={retry} syncing={syncing} />
+            <button onClick={logout}
+              className="text-xs text-neutral-500 hover:text-neutral-300">
+              Sign out
+            </button>
+          </div>
         </header>
 
         <nav className="mb-6 flex gap-1 overflow-x-auto rounded-xl border border-white/5 bg-neutral-900/50 p-1">
