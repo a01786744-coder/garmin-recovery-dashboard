@@ -65,6 +65,13 @@ your morning Recovery, while Strain and Body Battery accumulate through the day.
 
 ## Run
 
+**Easiest:** double-click **`Start Dashboard.bat`** in this folder (or the
+"Garmin Recovery Dashboard" desktop shortcut). It builds the frontend on first
+launch, then opens the app — no terminal needed. (One-time setup with
+`npm install` must be done first; see Setup above.)
+
+**From a terminal:**
+
 ```
 npm start
 ```
