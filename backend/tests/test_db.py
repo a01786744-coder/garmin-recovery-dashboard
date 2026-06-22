@@ -109,3 +109,19 @@ def test_activity_detail_roundtrip(tmp_path):
     assert d["polyline"][0]["lat"] == 30.1
     assert d["hr_zones"][0]["zoneNumber"] == 1
     assert d["weather"] is None
+
+
+def test_init_db_migrates_old_schema(tmp_path):
+    # Simulate a DB created before the v2 columns existed.
+    import sqlite3
+    p = tmp_path / "old.db"
+    con = sqlite3.connect(str(p))
+    con.execute("CREATE TABLE daily_metrics (date TEXT PRIMARY KEY, rhr REAL, "
+                "recovery_score INTEGER, strain_score INTEGER)")
+    con.commit(); con.close()
+    db.init_db(p)   # must ADD the new columns, not error
+    m = {k: None for k in db.DAILY_FIELDS}
+    m["acwr_ratio"] = 0.9; m["floors_ascended"] = 4.0
+    db.upsert_daily(p, "2026-06-21", m, recovery=70, strain=30)
+    row = db.get_daily(p, "2026-06-21")
+    assert row["acwr_ratio"] == 0.9 and row["floors_ascended"] == 4.0

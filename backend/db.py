@@ -32,6 +32,15 @@ def _conn(path):
     return c
 
 
+def _ensure_columns(c, table, wanted):
+    """Add any missing columns to an existing table (lightweight migration so
+    a DB created with an older schema gains new columns instead of erroring)."""
+    existing = {r["name"] for r in c.execute(f"PRAGMA table_info({table})")}
+    for col, typ in wanted:
+        if col not in existing:
+            c.execute(f"ALTER TABLE {table} ADD COLUMN {col} {typ}")
+
+
 def init_db(path):
     with _conn(path) as c:
         cols = ", ".join(f"{f} TEXT" if f in TEXT_FIELDS else f"{f} REAL"
@@ -41,6 +50,10 @@ def init_db(path):
                 date TEXT PRIMARY KEY, {cols},
                 recovery_score INTEGER, strain_score INTEGER
             )""")
+        # Migrate older DBs: add any daily_metrics columns introduced later.
+        _ensure_columns(c, "daily_metrics",
+                        [(f, "TEXT" if f in TEXT_FIELDS else "REAL") for f in DAILY_FIELDS]
+                        + [("recovery_score", "INTEGER"), ("strain_score", "INTEGER")])
         c.execute("""
             CREATE TABLE IF NOT EXISTS activities (
                 activity_id INTEGER PRIMARY KEY, date TEXT, type TEXT,
