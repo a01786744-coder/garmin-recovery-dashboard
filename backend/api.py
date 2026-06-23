@@ -83,8 +83,10 @@ def create_app(db_path=cfg.DB_PATH, client_factory=None,
     @app.get("/api/today")
     def today():
         from backend import settings as st
-        rows = db.get_trends(db_path, 1)
-        metrics = rows[-1] if rows else None
+        # Most recent day WITH data, not strictly the latest date — so an empty
+        # "today" (before the watch syncs last night's sleep) shows yesterday's
+        # data instead of a blank dashboard.
+        metrics = db.get_primary_day(db_path)
         sync = db.get_last_sync(db_path)
         window = st.load_settings(Path(db_path).parent / "settings.json")["baseline_window_days"]
         return jsonify({

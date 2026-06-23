@@ -171,6 +171,30 @@ def get_trends(path, days):
         return [dict(r) for r in reversed(rows)]
 
 
+# A day counts as the dashboard's "primary day" once it has last-night markers
+# (sleep or overnight HRV) — these drive the Sleep/Recovery gauges. RHR/steps
+# can trickle in for an incomplete today, so they must NOT qualify a day on
+# their own (that would select an empty-gauge today before sleep has synced).
+_PRIMARY_DAY_FIELDS = ("sleep_score", "hrv_last_night")
+
+
+def get_primary_day(path):
+    """The most recent day with last-night data (sleep/HRV), so the dashboard
+    shows the latest completed day rather than an empty 'today' before the watch
+    has synced last night's data (Whoop-style). Falls back to the most recent
+    row when none qualify; None on an empty DB."""
+    cond = " OR ".join(f"{f} IS NOT NULL" for f in _PRIMARY_DAY_FIELDS)
+    with _conn(path) as c:
+        row = c.execute(
+            f"SELECT * FROM daily_metrics WHERE {cond} ORDER BY date DESC LIMIT 1"
+        ).fetchone()
+        if row is None:
+            row = c.execute(
+                "SELECT * FROM daily_metrics ORDER BY date DESC LIMIT 1"
+            ).fetchone()
+        return dict(row) if row else None
+
+
 def get_history(path, field, days):
     if field not in DAILY_FIELDS:
         raise ValueError(f"unknown field {field}")

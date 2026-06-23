@@ -150,6 +150,10 @@ export default function App() {
   // If the active tab got hidden (capability or user toggle), fall back to the first visible tab.
   const activeKey = shownTabs.some(([k]) => k === tab) ? tab : shownTabs[0][0];
   const Active = VIEWS[activeKey];
+  // When today's data hasn't synced yet we show the most recent day with data.
+  const dataDate = today?.metrics?.date;
+  const realToday = new Date().toISOString().slice(0, 10);
+  const staleDay = dataDate && dataDate !== realToday;
 
   return (
     <div className="min-h-screen text-neutral-100">
@@ -157,7 +161,10 @@ export default function App() {
         <header className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-xl font-bold tracking-tight">Recovery Dashboard</h1>
-            <p className="text-[11px] text-neutral-600">Garmin Forerunner 970 · local &amp; private</p>
+            <p className="text-[11px] text-neutral-600">
+              Garmin Forerunner 970 · local &amp; private
+              {staleDay && <span className="ml-1 text-amber-500/80">· showing {dataDate} (today not synced yet)</span>}
+            </p>
           </div>
           <div className="flex items-center gap-3">
             <SyncHeader sync={today?.sync} onRetry={retry} syncing={syncing} />

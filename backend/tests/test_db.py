@@ -125,3 +125,51 @@ def test_init_db_migrates_old_schema(tmp_path):
     db.upsert_daily(p, "2026-06-21", m, recovery=70, strain=30)
     row = db.get_daily(p, "2026-06-21")
     assert row["acwr_ratio"] == 0.9 and row["floors_ascended"] == 4.0
+
+
+def test_get_primary_day_skips_empty_today(tmp_path):
+    # Yesterday has data; today (more recent) is an empty row (the morning gap
+    # before the watch syncs). Primary day should be the populated yesterday.
+    p = tmp_path / "pd.db"
+    db.init_db(p)
+    full = {k: None for k in db.DAILY_FIELDS}
+    full.update(sleep_score=90, rhr=42, hrv_last_night=70, steps=8000, body_battery=50)
+    db.upsert_daily(p, "2026-06-22", full, recovery=None, strain=None)
+    db.upsert_daily(p, "2026-06-23", {k: None for k in db.DAILY_FIELDS}, None, None)
+    assert db.get_primary_day(p)["date"] == "2026-06-22"
+
+
+def test_get_primary_day_prefers_today_when_it_has_data(tmp_path):
+    p = tmp_path / "pd.db"
+    db.init_db(p)
+    y = {k: None for k in db.DAILY_FIELDS}; y["sleep_score"] = 80
+    t = {k: None for k in db.DAILY_FIELDS}; t["sleep_score"] = 85   # today has last-night data
+    db.upsert_daily(p, "2026-06-22", y, None, None)
+    db.upsert_daily(p, "2026-06-23", t, None, None)
+    assert db.get_primary_day(p)["date"] == "2026-06-23"
+
+
+def test_get_primary_day_ignores_partial_today_without_sleep(tmp_path):
+    # Today has only RHR/steps trickled in (no sleep/HRV yet) — must still show
+    # yesterday's completed night, not the empty-gauge today.
+    p = tmp_path / "pd.db"
+    db.init_db(p)
+    y = {k: None for k in db.DAILY_FIELDS}; y["sleep_score"] = 90; y["hrv_last_night"] = 70
+    t = {k: None for k in db.DAILY_FIELDS}; t["rhr"] = 45; t["steps"] = 800
+    db.upsert_daily(p, "2026-06-22", y, None, None)
+    db.upsert_daily(p, "2026-06-23", t, None, None)
+    assert db.get_primary_day(p)["date"] == "2026-06-22"
+
+
+def test_get_primary_day_falls_back_to_latest_when_all_empty(tmp_path):
+    p = tmp_path / "pd.db"
+    db.init_db(p)
+    db.upsert_daily(p, "2026-06-22", {k: None for k in db.DAILY_FIELDS}, None, None)
+    db.upsert_daily(p, "2026-06-23", {k: None for k in db.DAILY_FIELDS}, None, None)
+    assert db.get_primary_day(p)["date"] == "2026-06-23"   # latest row when none populated
+
+
+def test_get_primary_day_none_when_empty_db(tmp_path):
+    p = tmp_path / "pd.db"
+    db.init_db(p)
+    assert db.get_primary_day(p) is None
