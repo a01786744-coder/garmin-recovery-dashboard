@@ -5,6 +5,7 @@ import ZoneBar from "../components/ui/ZoneBar.jsx";
 import StatTile from "../components/ui/StatTile.jsx";
 import SectionTitle from "../components/ui/SectionTitle.jsx";
 import NoData from "../components/ui/NoData.jsx";
+import MiniArea from "../components/ui/MiniArea.jsx";
 import { ZONE } from "../theme.js";
 import { secsToHm, secsToHms, speedToPace, meters, round, titleCase } from "../format.js";
 import RouteMap from "../components/RouteMap.jsx";
@@ -84,6 +85,18 @@ function Detail({ activity, units }) {
 
       <SectionTitle>Splits</SectionTitle>
       <SplitsTable splits={data?.splits} units={units} />
+
+      {data?.splits?.length > 1 && (
+        <>
+          <SectionTitle>HR by split</SectionTitle>
+          <MiniArea height={140} color="#ef4444" area={false}
+            data={data.splits.map((s, i) => ({ x: i + 1, y: s.averageHR ?? null }))} />
+          <SectionTitle>Pace by split</SectionTitle>
+          <MiniArea height={140} color="#22c55e" area={false}
+            data={data.splits.map((s, i) => ({ x: i + 1, y: s.averageSpeed ? (units === "imperial" ? 1609.34 : 1000) / s.averageSpeed : null }))} />
+          <p className="text-[11px] text-neutral-600">Pace shown as seconds per {units === "imperial" ? "mile" : "km"} (lower is faster).</p>
+        </>
+      )}
     </Card>
   );
 }
