@@ -22,3 +22,12 @@ def test_trends_includes_perf(tmp_path):
     body = client.get("/api/trends?days=90").get_json()
     assert "perf" in body
     assert body["perf"][-1]["vo2max"] == 60
+
+def test_insights_endpoint(tmp_path):
+    client, p = _client(tmp_path)
+    for d in range(1, 15):
+        m = {k: None for k in db.DAILY_FIELDS}
+        db.upsert_daily(p, f"2026-06-{d:02d}", m, recovery=(50 if d <= 7 else 60), strain=None)
+    body = client.get("/api/insights").get_json()
+    assert set(body) == {"weekly", "streaks", "insights", "correlations"}
+    assert body["weekly"]["recovery_score"]["this"] == 60
