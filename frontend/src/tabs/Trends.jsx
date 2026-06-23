@@ -30,7 +30,7 @@ function prValue(t, v) {
 const ENDUR_CLASS = ["—", "Untrained", "Novice", "Intermediate", "Trained",
   "Well trained", "Expert", "Superior", "Elite"];
 
-export default function Trends({ today, trends, caps }) {
+export default function Trends({ today, trends, caps, onOpen }) {
   const perf = today?.perf || {};
   const records = today?.records || [];
   const hrv = (trends?.hrv || []).map((d) => ({ x: d.date, y: d.value }));
@@ -41,14 +41,14 @@ export default function Trends({ today, trends, caps }) {
     <div className="space-y-4">
       <Grid className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {show("hrv") && (
-        <Card>
+        <Card onClick={() => onOpen("hrv")} className="cursor-pointer">
           <SectionTitle sub="14-day overnight average (ms)">HRV trend</SectionTitle>
           <MiniArea data={hrv} color={ACCENT.hrv} height={170} area={false}
             xTickFormatter={(d) => (typeof d === "string" ? d.slice(5) : "")} />
         </Card>
         )}
         {show("rhr") && (
-        <Card>
+        <Card onClick={() => onOpen("rhr")} className="cursor-pointer">
           <SectionTitle sub="14-day (bpm)">Resting HR trend</SectionTitle>
           <MiniArea data={rhr} color={ACCENT.rhr} height={170} area={false}
             xTickFormatter={(d) => (typeof d === "string" ? d.slice(5) : "")} />
@@ -57,11 +57,12 @@ export default function Trends({ today, trends, caps }) {
       </Grid>
 
       <Grid className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {show("vo2max") && <StatTile label="VO₂max" value={perf.vo2max} digits={0} accent="#22c55e" />}
+        {show("vo2max") && <StatTile label="VO₂max" value={perf.vo2max} digits={0} accent="#22c55e" onClick={() => onOpen("vo2max")} />}
         {show("vo2max") && <StatTile label="Fitness age" value={perf.fitness_age} accent="#38bdf8" />}
         {show("endurance") && (
         <StatTile label="Endurance" value={perf.endurance_score} accent="#a78bfa"
-          sub={perf.endurance_class != null ? ENDUR_CLASS[perf.endurance_class] : null} />
+          sub={perf.endurance_class != null ? ENDUR_CLASS[perf.endurance_class] : null}
+          onClick={() => onOpen("endurance")} />
         )}
         {show("acclimation") && <StatTile label="Heat acclim." value={perf.heat_acclimation} unit="%" accent="#f97316" />}
       </Grid>

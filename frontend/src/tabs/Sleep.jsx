@@ -28,7 +28,7 @@ const COMPONENTS = [
   ["sleep_restlessness_score", "Restless", "#2dd4bf"],
 ];
 
-export default function Sleep({ today, caps }) {
+export default function Sleep({ today, caps, onOpen }) {
   const m = today?.metrics || {};
   const date = m.date;
   const show = (cat) => visible(caps, cat);
@@ -42,7 +42,8 @@ export default function Sleep({ today, caps }) {
     <div className="space-y-4">
       <Grid className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="flex items-center justify-center py-6">
-          <AnimatedGauge value={m.sleep_score} label="Sleep Score" color={ACCENT.sleep} />
+          <AnimatedGauge value={m.sleep_score} label="Sleep Score" color={ACCENT.sleep}
+            onClick={() => onOpen("sleep")} />
         </Card>
         {show("sleep_detail") && (
         <Card className="md:col-span-2">
@@ -103,12 +104,12 @@ export default function Sleep({ today, caps }) {
       )}
 
       <Grid className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {show("hrv") && <StatTile label="Overnight HRV avg" value={m.hrv_last_night} unit="ms" accent={ACCENT.hrv} />}
+        {show("hrv") && <StatTile label="Overnight HRV avg" value={m.hrv_last_night} unit="ms" accent={ACCENT.hrv} onClick={() => onOpen("hrv")} />}
         {show("respiration") && <StatTile label="Sleep respiration" value={m.resp_sleep} unit="br/min" accent={ACCENT.resp} />}
         <StatTile label="Total sleep" value={secsToHm(
           (m.deep_sleep_s || 0) + (m.light_sleep_s || 0) + (m.rem_sleep_s || 0)
         )} />
-        <StatTile label="Resting HR" value={m.rhr} unit="bpm" accent={ACCENT.rhr} />
+        <StatTile label="Resting HR" value={m.rhr} unit="bpm" accent={ACCENT.rhr} onClick={() => onOpen("rhr")} />
       </Grid>
     </div>
   );

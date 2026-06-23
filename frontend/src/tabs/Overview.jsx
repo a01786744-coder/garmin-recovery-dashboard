@@ -9,7 +9,7 @@ import { BAND, band, ACCENT } from "../theme.js";
 import { round, secsToHm, titleCase } from "../format.js";
 import { visible } from "../caps.js";
 
-export default function Overview({ today, caps }) {
+export default function Overview({ today, caps, onOpen }) {
   const m = today?.metrics || {};
   const rec = m.recovery_score;
   const recColor = band(rec) ? BAND[band(rec)] : "#3b82f6";
@@ -26,11 +26,13 @@ export default function Overview({ today, caps }) {
             color={recColor}
             nullText="Building baseline"
             sublabel="Estimated · not a Garmin/Whoop score"
+            onClick={() => onOpen("recovery")}
           />
         </Card>
         {show("sleep") && (
           <Card className="flex items-center justify-center py-6">
-            <AnimatedGauge value={m.sleep_score} label="Sleep" color={ACCENT.sleep} />
+            <AnimatedGauge value={m.sleep_score} label="Sleep" color={ACCENT.sleep}
+              onClick={() => onOpen("sleep")} />
           </Card>
         )}
         <Card className="flex items-center justify-center py-6">
@@ -39,6 +41,7 @@ export default function Overview({ today, caps }) {
             label="Strain"
             color={ACCENT.strain}
             sublabel="Estimated · custom metric"
+            onClick={() => onOpen("strain")}
           />
         </Card>
       </Grid>
@@ -48,16 +51,16 @@ export default function Overview({ today, caps }) {
       </p>
 
       <Grid className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {show("body_battery") && <StatTile label="Body Battery" value={m.body_battery} accent={ACCENT.body} />}
-        {show("rhr") && <StatTile label="Resting HR" value={m.rhr} unit="bpm" accent={ACCENT.rhr} />}
-        {show("training_readiness") && <StatTile label="Training Readiness" value={m.training_readiness_score} accent="#22c55e" />}
-        {show("stress") && <StatTile label="Stress" value={m.stress_avg} accent={ACCENT.stress} />}
-        {show("steps_floors") && <StatTile label="Steps" value={m.steps} accent="#a3e635" />}
+        {show("body_battery") && <StatTile label="Body Battery" value={m.body_battery} accent={ACCENT.body} onClick={() => onOpen("body_battery")} />}
+        {show("rhr") && <StatTile label="Resting HR" value={m.rhr} unit="bpm" accent={ACCENT.rhr} onClick={() => onOpen("rhr")} />}
+        {show("training_readiness") && <StatTile label="Training Readiness" value={m.training_readiness_score} accent="#22c55e" onClick={() => onOpen("training_readiness")} />}
+        {show("stress") && <StatTile label="Stress" value={m.stress_avg} accent={ACCENT.stress} onClick={() => onOpen("stress")} />}
+        {show("steps_floors") && <StatTile label="Steps" value={m.steps} accent="#a3e635" onClick={() => onOpen("steps")} />}
         {show("steps_floors") && (
           <StatTile label="Active kcal" value={m.active_calories} unit="kcal" accent="#fb923c"
             sub={m.calories != null ? `${round(m.calories)} total` : null} />
         )}
-        {show("steps_floors") && <StatTile label="Floors" value={m.floors_ascended} digits={0} accent="#38bdf8" />}
+        {show("steps_floors") && <StatTile label="Floors" value={m.floors_ascended} digits={0} accent="#38bdf8" onClick={() => onOpen("floors")} />}
         {show("intensity_minutes") && (
           <Card className="flex items-center justify-center">
             <Ring

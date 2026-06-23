@@ -40,7 +40,7 @@ function FactorBar({ label, value }) {
   );
 }
 
-export default function Training({ today, caps }) {
+export default function Training({ today, caps, onOpen }) {
   const m = today?.metrics || {};
   const date = m.date;
   const show = (cat) => visible(caps, cat);
@@ -55,7 +55,7 @@ export default function Training({ today, caps }) {
       <Grid className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="flex items-center justify-center py-6">
           <AnimatedGauge value={m.strain_score} label="Strain" color={ACCENT.strain}
-            sublabel="Estimated · custom metric" />
+            sublabel="Estimated · custom metric" onClick={() => onOpen("strain")} />
         </Card>
         {show("training_load_acwr") && (
         <Card className="flex flex-col items-center justify-center py-6 gap-2">
@@ -114,10 +114,10 @@ export default function Training({ today, caps }) {
       )}
 
       <Grid className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {show("intensity_minutes") && <StatTile label="Intensity (wk)" value={m.intensity_weekly_total} unit={`/ ${m.intensity_weekly_goal ?? "—"}`} accent="#f97316" />}
+        {show("intensity_minutes") && <StatTile label="Intensity (wk)" value={m.intensity_weekly_total} unit={`/ ${m.intensity_weekly_goal ?? "—"}`} accent="#f97316" onClick={() => onOpen("intensity")} />}
         {show("intensity_minutes") && <StatTile label="Moderate min" value={m.intensity_moderate} accent="#60a5fa" />}
         {show("intensity_minutes") && <StatTile label="Vigorous min" value={m.intensity_vigorous} accent="#f97316" />}
-        {show("training_readiness") && <StatTile label="Readiness" value={m.training_readiness_score} accent="#22c55e" />}
+        {show("training_readiness") && <StatTile label="Readiness" value={m.training_readiness_score} accent="#22c55e" onClick={() => onOpen("training_readiness")} />}
       </Grid>
     </div>
   );

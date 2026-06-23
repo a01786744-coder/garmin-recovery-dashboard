@@ -3,10 +3,10 @@ import Card from "./Card.jsx";
 import AnimatedNumber from "./AnimatedNumber.jsx";
 
 // Compact metric tile. `value` may be a number (animated) or a preformatted string.
-export default function StatTile({ label, value, unit, digits = 0, sub, accent = "#a1a1aa", icon }) {
+export default function StatTile({ label, value, unit, digits = 0, sub, accent = "#a1a1aa", icon, onClick }) {
   const isNum = typeof value === "number";
   return (
-    <Card className="flex flex-col justify-between min-h-[92px]">
+    <Card onClick={onClick} className={"flex flex-col justify-between min-h-[92px] " + (onClick ? "cursor-pointer" : "")}>
       <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-neutral-500">
         {icon && <span style={{ color: accent }}>{icon}</span>}
         {label}

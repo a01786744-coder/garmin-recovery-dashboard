@@ -13,6 +13,7 @@ export default function AnimatedGauge({
   color = "#3b82f6",
   nullText = "No data",
   size = 150,
+  onClick,
 }) {
   const reduce = useReducedMotion();
   const R = size / 2 - 14;
@@ -20,8 +21,10 @@ export default function AnimatedGauge({
   const pct = value == null ? 0 : Math.max(0, Math.min(1, value / max));
   const cx = size / 2;
 
+  const Root = onClick ? "button" : "div";
   return (
-    <div className="flex flex-col items-center">
+    <Root type={onClick ? "button" : undefined} onClick={onClick}
+      className={"flex flex-col items-center " + (onClick ? "cursor-pointer hover:opacity-90 transition-opacity" : "")}>
       <div className="relative" style={{ width: size, height: size }}>
         <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
           <circle cx={cx} cy={cx} r={R} fill="none" stroke="#27272a" strokeWidth="11" />
@@ -60,6 +63,6 @@ export default function AnimatedGauge({
           {sublabel}
         </div>
       )}
-    </div>
+    </Root>
   );
 }

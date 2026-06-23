@@ -2,8 +2,9 @@ import React, { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   getToday, getTrends, postSync, getAuthStatus, postLogout, getCapabilities,
-  getSettings, postSettings, postSwitchAccount,
+  getSettings, postSettings, postSwitchAccount, getInsights,
 } from "./api.js";
+import DetailPanel from "./detail/DetailPanel.jsx";
 import { tabVisible } from "./caps.js";
 import SyncHeader from "./components/SyncHeader.jsx";
 import Login from "./Login.jsx";
@@ -35,6 +36,9 @@ export default function App() {
   const [ready, setReady] = useState(false);
   const [authed, setAuthed] = useState(null); // null = unknown, false = show login
   const [authError, setAuthError] = useState(false);
+  const [insights, setInsights] = useState(null);
+  const [trends90, setTrends90] = useState(null);
+  const [detailKey, setDetailKey] = useState(null);
 
   // Resolve auth status, retrying while the backend is still starting up.
   const checkAuth = useCallback(async (attempt = 0) => {
@@ -50,10 +54,11 @@ export default function App() {
 
   const load = useCallback(async () => {
     try {
-      const [t, tr, cp] = await Promise.all([getToday(), getTrends(14), getCapabilities()]);
+      const [t, tr, cp, ins] = await Promise.all([getToday(), getTrends(14), getCapabilities(), getInsights()]);
       setToday(t);
       setTrends(tr);
       setCaps(cp);
+      setInsights(ins);
       // Silent token refresh is handled by the backend; only when a sync truly
       // fails to authenticate do we send the user back to the login screen.
       if (t?.sync?.status === "error" && t.sync.message === "GarminAuthError") {
@@ -65,6 +70,13 @@ export default function App() {
       setReady(true);
     }
   }, []);
+
+  const openDetail = useCallback(async (key) => {
+    setDetailKey(key);
+    if (!trends90) {
+      try { setTrends90(await getTrends(90)); } catch (e) { /* panel still shows today + insights */ }
+    }
+  }, [trends90]);
 
   useEffect(() => { checkAuth(); }, [checkAuth]);
 
@@ -213,7 +225,7 @@ export default function App() {
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.22, ease: "easeOut" }}
             >
-              <Active today={today} trends={trends} caps={caps} units={units} />
+              <Active today={today} trends={trends} caps={caps} units={units} onOpen={openDetail} />
             </motion.div>
           </AnimatePresence>
         )}
@@ -222,6 +234,8 @@ export default function App() {
           Unofficial Garmin Connect client — for personal insight only, not medical advice.
         </footer>
       </div>
+      <DetailPanel metricKey={detailKey} trends90={trends90} today={today}
+        insights={insights} onClose={() => setDetailKey(null)} />
     </div>
   );
 }
