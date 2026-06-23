@@ -268,6 +268,14 @@ def get_latest_perf(path):
         return dict(row) if row else None
 
 
+def get_perf_history(path, days):
+    with _conn(path) as c:
+        rows = c.execute(
+            "SELECT * FROM perf_metrics ORDER BY date DESC LIMIT ?", (days,)
+        ).fetchall()
+        return [dict(r) for r in reversed(rows)]
+
+
 def replace_personal_records(path, records):
     with _conn(path) as c:
         c.execute("DELETE FROM personal_records")

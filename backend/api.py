@@ -77,6 +77,7 @@ def create_app(db_path=cfg.DB_PATH, client_factory=None,
             "days": rows,
             "hrv": [{"date": r["date"], "value": r["hrv_last_night"]} for r in rows],
             "rhr": [{"date": r["date"], "value": r["rhr"]} for r in rows],
+            "perf": db.get_perf_history(db_path, days),
         }
 
     @app.get("/api/today")
