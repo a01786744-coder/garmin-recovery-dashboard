@@ -3,6 +3,55 @@
 All notable changes to the Garmin Recovery Dashboard. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/). Dates are YYYY-MM-DD.
 
+## [3.0.0] — 2026-06-23
+
+Distribution-ready: one build any friend can install and log into, that shows
+only the tabs/cards their watch reports — plus Whoop-style drill-down detail
+views and a tested insights engine. All data stays local; no fabrication; the
+app never crashes on Garmin auth/rate-limit failures.
+
+### Added — Distribution & multi-device
+- **Per-user state in the OS user-data dir** (DB, auth token, capability profile,
+  settings, logs) — nothing user-specific is written into the project folder.
+  Electron passes the path to the backend on spawn.
+- **In-app login + MFA**: a first-run login screen; new users authenticate
+  entirely through the UI (no `.env` editing). Only Garth OAuth **tokens** are
+  stored (owner-only file perms); the password is used once and never persisted
+  or logged. Silent token refresh with re-login fallback; logout / switch-account.
+- **Watch-capability detection**: tabs and cards render conditionally from a
+  detected capability profile. Sticky (once a metric is ever seen it stays) with
+  a readiness gate, so a metric absent today still shows "No data" while a metric
+  the watch never reports is hidden — and an upgraded watch unlocks tabs
+  automatically.
+- **Settings panel** (gear): units (metric/imperial), sync interval, Recovery
+  baseline window, per-tab visibility toggles, and account switch (which clears
+  the previous account's local data for a clean handoff).
+- **Distribution polish**: onboarding/backfill progress, redaction-filtered local
+  log, **CSV + JSON export** of your own data, local-timezone display of Garmin
+  UTC timestamps, and an unofficial/not-medical-advice disclaimer.
+- **Double-click launcher** (`Start Dashboard.bat`) + desktop shortcut — no
+  terminal needed.
+
+### Added — Detail views & insights
+- **Slide-in detail panel** on any metric (gauge, tile, or trend card): up to
+  90-day evolution graph with an average reference line, a stat row
+  (current / 7-day / 30-day / min / max / Δ-vs-avg), today's intraday curve where
+  available, and metric-specific insights.
+- **Per-split HR & pace graphs** in activity detail.
+- **Tested insights engine** (`/api/insights`): auto-insights (HRV/RHR trends,
+  "best in N days"), streaks (green-recovery, workout, days-worn, sleep-goal),
+  this-week-vs-last recap, and data-driven correlations (e.g. sleep → next-day
+  recovery). Thin data yields "not enough history yet," never invented numbers.
+- `/api/trends` gains a performance-metric history series.
+
+### Fixed
+- **Empty-morning dashboard**: before the watch uploads last night's sleep/HRV,
+  today's row is empty. The dashboard now shows the most recent day with
+  last-night data (with an "as of <date>" note) instead of going blank.
+
+### Notes
+- No new runtime dependencies beyond those already declared. 96 backend tests.
+
 ## [2.0.0] — 2026-06-21
 
 A major expansion from a single dashboard view into a five-tab, animated,
@@ -75,5 +124,6 @@ Initial release.
 - No-fabrication guarantee (missing metrics → "No data"); graceful auth/rate-limit
   handling with "last synced X ago" + Retry.
 
+[3.0.0]: #300--2026-06-23
 [2.0.0]: #200--2026-06-21
 [1.0.0]: #100--2026-06-20
