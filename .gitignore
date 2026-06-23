@@ -18,3 +18,7 @@ frontend/dist/
 # OS
 .DS_Store
 Thumbs.db
+
+# Installer build artifacts
+pybuild/
+release/

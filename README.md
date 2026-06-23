@@ -34,7 +34,31 @@ The dashboard is **"today"-centric, like Whoop**: Garmin files last night's
 sleep and HRV under the wake date, so today's card shows last night's Sleep and
 your morning Recovery, while Strain and Body Battery accumulate through the day.
 
-## Prerequisites
+## Sharing with a friend (one-click installer)
+
+The easiest way to give this to someone: build a standalone Windows installer
+that bundles everything (Node/Electron **and** a frozen Python backend), so the
+recipient needs **no Python, no Node, no terminal**.
+
+```
+npm run dist
+```
+
+This produces `release/GarminRecoveryDashboard-Setup-<version>.exe`. Send that
+single file. Your friend double-clicks it → a one-time Windows SmartScreen
+warning ("Windows protected your PC" → **More info** → **Run anyway**, because
+it's unsigned) → it installs per-user (no admin) with a desktop shortcut →
+launches to a **login screen** where they sign in with **their own** Garmin
+account. Their credentials and data stay entirely on their machine.
+
+The app **auto-detects what their watch supports** and hides tabs/cards their
+device doesn't report — so one build works on a Forerunner 970, a 165, or any
+other model.
+
+> Requires the dev toolchain below installed once on the *build* machine
+> (Python, Node, and `pyinstaller` in the venv). The *recipient* needs none of it.
+
+## Prerequisites (to develop or build)
 
 - **Python 3.11** (the project pins `garminconnect==0.3.2`, the newest release
   that supports Python 3.11; 0.3.3+ require Python 3.12).

@@ -1,12 +1,41 @@
 {
   "name": "garmin-dashboard",
-  "version": "1.0.0",
+  "version": "3.0.0",
   "description": "Local Whoop-style recovery dashboard sourced from Garmin Connect.",
   "main": "electron/main.js",
   "scripts": {
     "build:frontend": "npm --prefix frontend run build",
+    "build:backend": ".venv/Scripts/python -m PyInstaller --noconfirm --onedir --name garmin-backend --distpath pybuild/dist --workpath pybuild/build --specpath pybuild --collect-all garminconnect --collect-all curl_cffi --collect-all ua_generator --collect-data certifi --collect-submodules backend server_main.py",
     "start": "npm run build:frontend && electron .",
+    "dist": "npm run build:frontend && npm run build:backend && electron-builder --win",
     "test:backend": "python -m pytest backend -v"
   },
-  "devDependencies": { "electron": "^31.3.0" }
+  "devDependencies": {
+    "electron": "^31.3.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.rodri.garminrecoverydashboard",
+    "productName": "Garmin Recovery Dashboard",
+    "directories": { "output": "release" },
+    "files": [
+      "electron/**",
+      "frontend/dist/**",
+      "package.json"
+    ],
+    "extraResources": [
+      { "from": "pybuild/dist/garmin-backend", "to": "backend" }
+    ],
+    "win": {
+      "target": "nsis",
+      "artifactName": "GarminRecoveryDashboard-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Garmin Recovery Dashboard"
+    }
+  }
 }
