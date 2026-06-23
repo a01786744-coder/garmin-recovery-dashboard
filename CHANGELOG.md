@@ -3,6 +3,17 @@
 All notable changes to the Garmin Recovery Dashboard. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/). Dates are YYYY-MM-DD.
 
+## [3.1.0] — 2026-06-23
+
+### Added
+- **One-click Windows installer** (`npm run dist`): the Python backend is frozen
+  with PyInstaller (including `garminconnect` + its native `curl_cffi`) and
+  bundled with Electron into an NSIS installer. Recipients need **no Python, no
+  Node, no terminal** — they run a single `.exe`, click through the one-time
+  (unsigned) SmartScreen prompt, and it installs per-user with a desktop shortcut
+  and launches to the login screen. The app still auto-detects each watch's
+  capabilities, so one installer works on any Garmin model.
+
 ## [3.0.0] — 2026-06-23
 
 Distribution-ready: one build any friend can install and log into, that shows
@@ -124,6 +135,7 @@ Initial release.
 - No-fabrication guarantee (missing metrics → "No data"); graceful auth/rate-limit
   handling with "last synced X ago" + Retry.
 
+[3.1.0]: #310--2026-06-23
 [3.0.0]: #300--2026-06-23
 [2.0.0]: #200--2026-06-21
 [1.0.0]: #100--2026-06-20
