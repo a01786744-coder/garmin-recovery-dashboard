@@ -225,7 +225,7 @@ export default function App() {
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.22, ease: "easeOut" }}
             >
-              <Active today={today} trends={trends} caps={caps} units={units} onOpen={openDetail} />
+              <Active today={today} trends={trends} caps={caps} units={units} onOpen={openDetail} insights={insights} />
             </motion.div>
           </AnimatePresence>
         )}

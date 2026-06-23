@@ -8,8 +8,9 @@ import NoData from "../components/ui/NoData.jsx";
 import { BAND, band, ACCENT } from "../theme.js";
 import { round, secsToHm, titleCase } from "../format.js";
 import { visible } from "../caps.js";
+import InsightsSection from "../components/Insights.jsx";
 
-export default function Overview({ today, caps, onOpen }) {
+export default function Overview({ today, caps, onOpen, insights }) {
   const m = today?.metrics || {};
   const rec = m.recovery_score;
   const recColor = band(rec) ? BAND[band(rec)] : "#3b82f6";
@@ -49,6 +50,8 @@ export default function Overview({ today, caps, onOpen }) {
       <p className="text-center text-xs text-neutral-600">
         Recovery &amp; Strain are custom estimates from your Garmin data — not official Garmin or Whoop metrics.
       </p>
+
+      <InsightsSection insights={insights} caps={caps} />
 
       <Grid className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {show("body_battery") && <StatTile label="Body Battery" value={m.body_battery} accent={ACCENT.body} onClick={() => onOpen("body_battery")} />}
