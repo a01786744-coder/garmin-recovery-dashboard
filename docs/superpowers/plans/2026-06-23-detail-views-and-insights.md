@@ -179,15 +179,19 @@ def test_correlations_thin_data_empty():
     assert ins.correlations([_day("2026-06-21", recovery_score=60)]) == []
 
 def test_correlations_sleep_to_recovery():
-    # 10 days: long-sleep nights are followed by higher recovery
+    # 12 days of varied sleep durations; each night's sleep predicts the NEXT
+    # day's recovery (pairs are sleep[i] -> recovery[i+1]). Varied (non-bimodal)
+    # durations so the median split has a populated high group.
+    hours = [6.0, 6.5, 7.0, 7.5, 8.0, 8.5, 6.2, 6.8, 7.2, 7.8, 8.2, 8.6]
     daily = []
-    for i in range(10):
-        long = i % 2 == 0
+    for i, h in enumerate(hours):
+        total = int(h * 3600)
         daily.append(_day(f"2026-06-{i+1:02d}",
-                          deep_sleep_s=3600, light_sleep_s=(20000 if long else 9000),
-                          rem_sleep_s=3600,
-                          recovery_score=(75 if long else 55)))
-    # next-day recovery encodes the prior night via the alternating pattern
+                          deep_sleep_s=int(total * 0.2),
+                          light_sleep_s=int(total * 0.6),
+                          rem_sleep_s=int(total * 0.2)))
+    for i in range(1, len(daily)):
+        daily[i]["recovery_score"] = 40 + (hours[i - 1] - 6) * 10
     out = ins.correlations(daily)
     assert any("sleep" in c["text"].lower() for c in out)
 ```
