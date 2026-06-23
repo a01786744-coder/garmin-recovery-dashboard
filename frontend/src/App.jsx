@@ -59,10 +59,17 @@ export default function App() {
       setTrends(tr);
       setCaps(cp);
       setInsights(ins);
-      // Silent token refresh is handled by the backend; only when a sync truly
-      // fails to authenticate do we send the user back to the login screen.
+      // A sync may report an auth error transiently (e.g. a token refresh
+      // racing a Garmin rate-limit). Do NOT loop the user back to login on that
+      // alone — only show login if there is genuinely no saved token. This keeps
+      // a hiccup as "sync failed · Retry" on the dashboard instead of a loop.
       if (t?.sync?.status === "error" && t.sync.message === "GarminAuthError") {
-        setAuthed(false);
+        try {
+          const { authenticated } = await getAuthStatus();
+          if (!authenticated) setAuthed(false);
+        } catch (e) {
+          /* backend unreachable — keep current view, don't bounce */
+        }
       }
     } catch (e) {
       /* keep last good data; never crash */

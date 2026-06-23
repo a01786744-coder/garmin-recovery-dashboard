@@ -3,6 +3,14 @@
 All notable changes to the Garmin Recovery Dashboard. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/). Dates are YYYY-MM-DD.
 
+## [3.1.1] — 2026-06-23
+
+### Fixed
+- **Login loop:** a transient auth error during the post-login sync (e.g. a token
+  refresh racing a Garmin rate-limit) no longer bounces the user back to the
+  login screen. The app now only shows login when there is genuinely no saved
+  token; a hiccup stays on the dashboard as "sync failed · Retry".
+
 ## [3.1.0] — 2026-06-23
 
 ### Added
@@ -135,6 +143,7 @@ Initial release.
 - No-fabrication guarantee (missing metrics → "No data"); graceful auth/rate-limit
   handling with "last synced X ago" + Retry.
 
+[3.1.1]: #311--2026-06-23
 [3.1.0]: #310--2026-06-23
 [3.0.0]: #300--2026-06-23
 [2.0.0]: #200--2026-06-21
