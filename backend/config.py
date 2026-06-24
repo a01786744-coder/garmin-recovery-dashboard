@@ -43,5 +43,8 @@ BASELINE_MIN_DAYS = 14
 # How many full-fetch days we must observe before trusting a "not supported"
 # verdict enough to hide a tab/card (avoids hiding on early/sparse data).
 CAPABILITY_READY_DAYS = 3
+# Bumped when the backfill fetch set changes (v2 added sleep). On an older DB
+# this triggers a one-time re-backfill of the window so history fills in.
+BASELINE_FETCH_VERSION = 2
 
 DATA_DIR.mkdir(parents=True, exist_ok=True)

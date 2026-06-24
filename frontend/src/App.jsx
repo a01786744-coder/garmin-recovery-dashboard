@@ -169,7 +169,7 @@ export default function App() {
           <div>
             <h1 className="text-xl font-bold tracking-tight">Recovery Dashboard</h1>
             <p className="text-[11px] text-neutral-600">
-              Garmin Forerunner 970 · local &amp; private
+              {caps?.device_name ? `Garmin ${caps.device_name}` : "Garmin"} · local &amp; private
               {staleDay && <span className="ml-1 text-amber-500/80">· showing {dataDate} (today not synced yet)</span>}
             </p>
           </div>

@@ -122,8 +122,10 @@ def test_run_sync_writes_capability_profile(tmp_path):
     c.fetch_performance.return_value = {"vo2max": 60}
     c.fetch_intraday.return_value = {}
     c.fetch_personal_records.return_value = []
+    c.fetch_device_name.return_value = "fēnix 7"
     sync.run_sync(c, p, today=dt.date(2026, 6, 22), backfill_days=2, pacing=0)
     prof = caps.load_profile(tmp_path / "capabilities.json")
     assert prof is not None
     assert prof["supported"]["sleep"] is True
     assert prof["supported"]["vo2max"] is True       # from perf
+    assert prof["device_name"] == "fēnix 7"          # detected device name persisted

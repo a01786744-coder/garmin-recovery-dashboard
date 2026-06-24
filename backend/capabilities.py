@@ -104,6 +104,8 @@ def default_profile():
         "supported": {c: True for c in ALL_CATEGORIES},
         "ready": False,
         "observed_days": 0,
+        "device_name": None,
+        "baseline_fetch_version": 0,
     }
 
 

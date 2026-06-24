@@ -121,18 +121,40 @@ class GarminClient:
         return getattr(self, "_fetch_errors", 0) > 0
 
     def fetch_baseline(self, date_str):
-        """Lightweight pull for backfilling history cheaply: HRV + RHR only
-        (2 calls), so a 30-day backfill stays within Garmin's rate limits."""
+        """Backfill pull for history: HRV + RHR + sleep (3 calls). Sleep is
+        included so the Sleep trend/detail has history, not just today."""
         self._fetch_errors = 0
         api = self.api
         summary = self._safe(lambda: api.get_user_summary(date_str), {}) or {}
         hrv = self._safe(lambda: api.get_hrv_data(date_str), None)
+        sleep = self._safe(lambda: api.get_sleep_data(date_str), {}) or {}
         hrv_sum = (hrv or {}).get("hrvSummary", {}) if hrv else {}
+        sdto = (sleep or {}).get("dailySleepDTO", {}) or {}
+        scores = sdto.get("sleepScores") or {}
         return {
             "hrv_last_night": hrv_sum.get("lastNightAvg"),
             "hrv_status": hrv_sum.get("status"),
             "rhr": summary.get("restingHeartRate"),
+            "sleep_score": (scores.get("overall") or {}).get("value"),
+            "deep_sleep_s": sdto.get("deepSleepSeconds"),
+            "light_sleep_s": sdto.get("lightSleepSeconds"),
+            "rem_sleep_s": sdto.get("remSleepSeconds"),
+            "awake_sleep_s": sdto.get("awakeSleepSeconds"),
         }
+
+    def fetch_device_name(self):
+        """The user's primary watch model name, e.g. 'fēnix 7' or 'Forerunner
+        165'. Used for display so the header isn't hardcoded. Returns None if
+        Garmin doesn't report it."""
+        self._fetch_errors = 0
+        api = self.api
+        last = self._safe(lambda: api.get_device_last_used(), {}) or {}
+        name = last.get("lastUsedDeviceName")
+        if not name:
+            devices = self._safe(lambda: api.get_devices(), []) or []
+            if isinstance(devices, list) and devices:
+                name = (devices[0] or {}).get("productDisplayName")
+        return name or None
 
     def fetch_day(self, date_str):
         self._fetch_errors = 0

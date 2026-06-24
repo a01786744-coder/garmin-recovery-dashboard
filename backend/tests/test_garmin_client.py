@@ -107,18 +107,23 @@ def test_last_fetch_had_errors_tracks_exceptions():
     api = MagicMock()
     api.get_user_summary.return_value = {"restingHeartRate": 50}
     api.get_hrv_data.return_value = {"hrvSummary": {"lastNightAvg": 40, "status": "BALANCED"}}
+    api.get_sleep_data.return_value = {"dailySleepDTO": {
+        "deepSleepSeconds": 3600, "lightSleepSeconds": 7200, "remSleepSeconds": 5400,
+        "awakeSleepSeconds": 600, "sleepScores": {"overall": {"value": 82}}}}
     c = _client_with_api(api)
     base = c.fetch_baseline("2026-06-19")
-    assert base == {"hrv_last_night": 40, "hrv_status": "BALANCED", "rhr": 50}
+    assert base["hrv_last_night"] == 40 and base["rhr"] == 50
+    assert base["sleep_score"] == 82 and base["deep_sleep_s"] == 3600   # sleep now backfilled
     assert c.last_fetch_had_errors is False
 
 def test_last_fetch_had_errors_true_on_transport_error():
     api = MagicMock()
     api.get_user_summary.side_effect = ConnectionError("429")   # transport error
     api.get_hrv_data.return_value = None
+    api.get_sleep_data.return_value = {}
     c = _client_with_api(api)
     base = c.fetch_baseline("2026-06-19")
-    assert base["rhr"] is None
+    assert base["rhr"] is None and base["sleep_score"] is None
     assert c.last_fetch_had_errors is True                       # vs genuine empty
 
 

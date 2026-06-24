@@ -17,7 +17,9 @@ from pathlib import Path
 import backend.db as db
 from backend import recovery as rec
 from backend import capabilities as caps
-from backend.config import BASELINE_WINDOW_DAYS, CAPABILITY_READY_DAYS
+from backend.config import (
+    BASELINE_WINDOW_DAYS, CAPABILITY_READY_DAYS, BASELINE_FETCH_VERSION,
+)
 from backend.garmin_client import (
     GarminAuthError, GarminRateLimitError, GarminConnectionError,
     GarminMFARequired,
@@ -31,17 +33,24 @@ def _capability_path(db_path):
     return Path(db_path).parent / "capabilities.json"
 
 
-def _update_capabilities(db_path):
+def _update_capabilities(db_path, device_name=None, baseline_fetch_version=None):
     """Recompute + persist the capability profile from already-stored data
-    (no extra Garmin calls). Sticky + readiness-gated (see capabilities.py)."""
+    (no extra Garmin calls). Sticky + readiness-gated (see capabilities.py).
+    Also carries the detected device name (sticky) and the backfill version."""
+    prev = caps.load_profile(_capability_path(db_path))
     perf = db.get_latest_perf(db_path)
     profile = caps.compute_profile(
         db.get_trends(db_path, BASELINE_WINDOW_DAYS),
         [perf] if perf else [],
         db.get_personal_records(db_path),
         db.get_recent_activities(db_path, 10),
-        prev=caps.load_profile(_capability_path(db_path)),
+        prev=prev,
         ready_days=CAPABILITY_READY_DAYS,
+    )
+    profile["device_name"] = device_name or (prev or {}).get("device_name")
+    profile["baseline_fetch_version"] = (
+        baseline_fetch_version if baseline_fetch_version is not None
+        else (prev or {}).get("baseline_fetch_version", 0)
     )
     caps.save_profile(_capability_path(db_path), profile)
     return profile
@@ -61,14 +70,19 @@ def run_sync(client, db_path, today=None, backfill_days=BASELINE_WINDOW_DAYS, pa
     today_str = today.isoformat()
     start_str = (today - dt.timedelta(days=backfill_days)).isoformat()
     existing = db.get_existing_dates(db_path, backfill_days)
+    # If the backfill fetch set was expanded (e.g. sleep added), re-fetch the
+    # whole window once so older DBs gain the new history.
+    prev_profile = caps.load_profile(_capability_path(db_path)) or {}
+    need_rebackfill = prev_profile.get("baseline_fetch_version", 0) < BASELINE_FETCH_VERSION
 
     status = "ok"
+    device_name = None
     try:
         # 1. Backfill missing PAST days (oldest first so each day's baseline
         #    is already stored when we score it). Paced + 429-tolerant.
         for i in range(backfill_days, 0, -1):
             d = (today - dt.timedelta(days=i)).isoformat()
-            if d in existing:
+            if d in existing and not need_rebackfill:
                 continue
             base = client.fetch_baseline(d)
             if client.last_fetch_had_errors:
@@ -106,12 +120,15 @@ def run_sync(client, db_path, today=None, backfill_days=BASELINE_WINDOW_DAYS, pa
         prs = client.fetch_personal_records()
         if prs:
             db.replace_personal_records(db_path, prs)
+        device_name = client.fetch_device_name()
     except _FETCH_ERRORS as e:
         log.warning("extras fetch failed: %s", type(e).__name__)
 
     # Re-probe capabilities from stored data (unlocks tabs an upgraded watch
-    # starts reporting; never an extra Garmin call).
-    _update_capabilities(db_path)
+    # starts reporting; never an extra Garmin call). Persist the device name and
+    # only advance the backfill version once a backfill fully completed.
+    new_version = BASELINE_FETCH_VERSION if status == "ok" else None
+    _update_capabilities(db_path, device_name=device_name, baseline_fetch_version=new_version)
 
     msg = "synced" if status == "ok" else "synced (backfill rate-limited; will resume)"
     db.write_sync_log(db_path, status, msg, availability)

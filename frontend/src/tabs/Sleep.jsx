@@ -28,15 +28,15 @@ const COMPONENTS = [
   ["sleep_restlessness_score", "Restless", "#2dd4bf"],
 ];
 
-export default function Sleep({ today, caps, onOpen }) {
+export default function Sleep({ today, trends, caps, onOpen }) {
   const m = today?.metrics || {};
   const date = m.date;
   const show = (cat) => visible(caps, cat);
   const hrv = useAsync(() => (date ? getIntraday(date, "hrv") : null), [date]);
-  const baseLow = null; // baseline band carried in summary; readings only here
 
   const hrvSeries =
     hrv.data?.series?.map((r) => ({ x: r.readingTimeGMT, y: r.hrvValue })) || null;
+  const sleepHistory = (trends?.days || []).map((d) => ({ x: d.date, y: d.sleep_score }));
 
   return (
     <div className="space-y-4">
@@ -69,6 +69,12 @@ export default function Sleep({ today, caps, onOpen }) {
         </Card>
         )}
       </Grid>
+
+      <Card onClick={() => onOpen("sleep")} className="cursor-pointer">
+        <SectionTitle sub="Tap for the full 90-day view">Sleep score — history</SectionTitle>
+        <MiniArea data={sleepHistory} color={ACCENT.sleep} height={170} area
+          xTickFormatter={(d) => (typeof d === "string" ? d.slice(5) : "")} />
+      </Card>
 
       <Grid className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card>

@@ -3,6 +3,19 @@
 All notable changes to the Garmin Recovery Dashboard. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/). Dates are YYYY-MM-DD.
 
+## [3.1.2] — 2026-06-23
+
+### Added
+- **Detected watch model** in the header: instead of a hardcoded "Forerunner
+  970", the app reads the user's actual device from Garmin (e.g. "Garmin fēnix 7",
+  "Garmin Forerunner 165") and displays it.
+
+### Fixed
+- **Sleep history was missing:** the backfill only fetched HRV + RHR for past
+  days, so the Sleep trend/detail showed only today. The backfill now includes
+  sleep, a new **"Sleep score — history"** card was added to the Sleep tab, and a
+  one-time re-backfill fills in sleep for installs that already had data.
+
 ## [3.1.1] — 2026-06-23
 
 ### Fixed
@@ -143,6 +156,7 @@ Initial release.
 - No-fabrication guarantee (missing metrics → "No data"); graceful auth/rate-limit
   handling with "last synced X ago" + Retry.
 
+[3.1.2]: #312--2026-06-23
 [3.1.1]: #311--2026-06-23
 [3.1.0]: #310--2026-06-23
 [3.0.0]: #300--2026-06-23

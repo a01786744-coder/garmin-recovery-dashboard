@@ -28,7 +28,17 @@ def _client(today_hrv=45, today_rhr=48):
     c.fetch_intraday.return_value = {"hr": None, "stress": None,
                                      "body_battery": None, "hrv": None}
     c.fetch_personal_records.return_value = []
+    c.fetch_device_name.return_value = "Test Watch"
     return c
+
+
+def _mark_backfilled(tmp_path):
+    """Write a current-version profile so the one-time re-backfill (which
+    re-fetches the whole window) doesn't trigger and skip-existing applies."""
+    import json
+    from backend.config import BASELINE_FETCH_VERSION
+    (tmp_path / "capabilities.json").write_text(
+        json.dumps({"baseline_fetch_version": BASELINE_FETCH_VERSION}))
 
 def test_run_sync_backfills_then_scores_today(tmp_path):
     p = tmp_path / "t.db"
@@ -46,12 +56,26 @@ def test_run_sync_backfills_then_scores_today(tmp_path):
 def test_run_sync_skips_existing_backfill_days(tmp_path):
     p = tmp_path / "t.db"
     db.init_db(p)
+    _mark_backfilled(tmp_path)
     # pre-seed one past day; it must not be re-fetched
     db.upsert_daily(p, "2026-06-10", _metrics(41, 49), None, None)
     c = _client()
     sync.run_sync(c, p, today=TODAY, backfill_days=30, pacing=0)
     fetched_dates = [call.args[0] for call in c.fetch_baseline.call_args_list]
     assert "2026-06-10" not in fetched_dates             # skipped (already present)
+
+def test_run_sync_rebackfills_when_baseline_version_outdated(tmp_path):
+    import json
+    p = tmp_path / "t.db"
+    db.init_db(p)
+    # Existing day from before sleep was added (no profile => version 0).
+    db.upsert_daily(p, "2026-06-10", _metrics(41, 49), None, None)
+    c = _client()
+    sync.run_sync(c, p, today=TODAY, backfill_days=30, pacing=0)
+    fetched = [call.args[0] for call in c.fetch_baseline.call_args_list]
+    assert "2026-06-10" in fetched                       # re-fetched to fill in sleep history
+    prof = json.loads((tmp_path / "capabilities.json").read_text())
+    assert prof["baseline_fetch_version"] >= 2           # version advanced after a clean sync
 
 def test_run_sync_partial_when_backfill_rate_limited(tmp_path):
     p = tmp_path / "t.db"
