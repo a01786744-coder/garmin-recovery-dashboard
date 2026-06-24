@@ -47,7 +47,9 @@ export default function App() {
       setAuthed(authenticated);
       setAuthError(false);
     } catch (e) {
-      if (attempt < 10) setTimeout(() => checkAuth(attempt + 1), 1000);
+      // The bundled backend can take a few seconds to cold-start; retry for
+      // ~30s before giving up so a normal startup never shows the error.
+      if (attempt < 30) setTimeout(() => checkAuth(attempt + 1), 1000);
       else setAuthError(true);   // stop spinning; show an actionable message
     }
   }, []);

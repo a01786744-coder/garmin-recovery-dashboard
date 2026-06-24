@@ -3,6 +3,16 @@
 All notable changes to the Garmin Recovery Dashboard. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/). Dates are YYYY-MM-DD.
 
+## [3.1.3] — 2026-06-23
+
+### Fixed
+- **"Can't reach the local service" on launch:** the first sync ran on the main
+  thread *before* the API server bound its port, so a long first backfill (made
+  longer by the v3.1.2 sleep re-backfill) delayed the server coming up and the UI
+  timed out. The startup sync now runs in a background thread so the server binds
+  immediately (~1s); the UI also retries the connection for ~30s to cover a cold
+  start.
+
 ## [3.1.2] — 2026-06-23
 
 ### Added
@@ -156,6 +166,7 @@ Initial release.
 - No-fabrication guarantee (missing metrics → "No data"); graceful auth/rate-limit
   handling with "last synced X ago" + Retry.
 
+[3.1.3]: #313--2026-06-23
 [3.1.2]: #312--2026-06-23
 [3.1.1]: #311--2026-06-23
 [3.1.0]: #310--2026-06-23

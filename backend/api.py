@@ -318,7 +318,12 @@ def main():
         return GarminClient(None, None, cfg.TOKENSTORE_DIR)
 
     app = create_app(cfg.DB_PATH, client_factory=factory)
-    _scheduled_loop(cfg.DB_PATH, factory)   # immediate + every 30 min
+    # Run the first sync (and its rescheduling) in a background thread so the
+    # Flask server binds 127.0.0.1:5057 IMMEDIATELY. A long first backfill must
+    # never delay the server coming up, or the UI reports "can't reach the
+    # service" before the port is even open.
+    threading.Thread(target=_scheduled_loop, args=(cfg.DB_PATH, factory),
+                     daemon=True).start()
     app.run(host="127.0.0.1", port=5057)
 
 
