@@ -22,3 +22,6 @@ Thumbs.db
 # Installer build artifacts
 pybuild/
 release/
+
+# CI artifact downloads
+_ci_artifacts/
