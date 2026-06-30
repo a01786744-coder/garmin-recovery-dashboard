@@ -1,4 +1,4 @@
-const { app, BrowserWindow } = require("electron");
+const { app, BrowserWindow, shell } = require("electron");
 const { spawn } = require("child_process");
 const path = require("path");
 const fs = require("fs");
@@ -44,6 +44,15 @@ function createWindow() {
     webPreferences: { contextIsolation: true },
   });
   win.loadFile(path.join(ROOT, "frontend", "dist", "index.html"));
+  // Open external links (e.g. the update-notifier Download link) in the user's
+  // real browser instead of a new Electron window.
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (/^https?:\/\//.test(url)) {
+      shell.openExternal(url);
+      return { action: "deny" };
+    }
+    return { action: "allow" };
+  });
 }
 
 app.whenReady().then(() => {

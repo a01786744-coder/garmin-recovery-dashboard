@@ -5,6 +5,8 @@ async function j(path, opts) {
   return r.json();
 }
 export const getToday = () => j("/api/today");
+export const getDays = () => j("/api/days");
+export const getDay = (date) => j(`/api/day/${date}`);
 export const getTrends = (days) => j(`/api/trends?days=${days}`);
 export const getSyncStatus = () => j("/api/sync-status");
 export const postSync = () => j("/api/sync", { method: "POST" });

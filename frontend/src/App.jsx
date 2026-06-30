@@ -2,11 +2,16 @@ import React, { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   getToday, getTrends, postSync, getAuthStatus, postLogout, getCapabilities,
-  getSettings, postSettings, postSwitchAccount, getInsights,
+  getSettings, postSettings, postSwitchAccount, getInsights, getDays, getDay,
 } from "./api.js";
+
+// Tabs whose content is a single day's metrics (so the day browser applies).
+// "today" is excluded: it's the live time-aware recap, always the current day.
+const DAY_TABS = new Set(["overview", "sleep", "training"]);
 import DetailPanel from "./detail/DetailPanel.jsx";
 import { tabVisible } from "./caps.js";
 import SyncHeader from "./components/SyncHeader.jsx";
+import UpdateBanner from "./components/UpdateBanner.jsx";
 import Login from "./Login.jsx";
 import Settings from "./Settings.jsx";
 import Overview from "./tabs/Overview.jsx";
@@ -43,6 +48,9 @@ export default function App() {
   const [authError, setAuthError] = useState(false);
   const [insights, setInsights] = useState(null);
   const [trends90, setTrends90] = useState(null);
+  const [days, setDays] = useState([]);            // all dates with data (asc)
+  const [selectedDate, setSelectedDate] = useState(null);  // null = live/latest
+  const [dayPayload, setDayPayload] = useState(null);      // fetched past day
   const [detailKey, setDetailKey] = useState(null);
 
   // Resolve auth status, retrying while the backend is still starting up.
@@ -98,9 +106,18 @@ export default function App() {
     if (authed !== true) return;
     load();
     getSettings().then(setSettings).catch(() => {});
+    getDays().then((d) => setDays(d.dates || [])).catch(() => {});
     const id = setInterval(load, 60000);
     return () => clearInterval(id);
   }, [authed, load]);
+
+  // Load a specific past day when one is selected (null = live/latest day).
+  useEffect(() => {
+    if (!selectedDate) { setDayPayload(null); return; }
+    let alive = true;
+    getDay(selectedDate).then((d) => alive && setDayPayload(d)).catch(() => {});
+    return () => { alive = false; };
+  }, [selectedDate]);
 
   // Apply the theme from settings once loaded (source of truth), mirroring it to
   // localStorage so the next boot paints the right theme before settings arrive.
@@ -187,6 +204,19 @@ export default function App() {
   const realToday = new Date().toISOString().slice(0, 10);
   const staleDay = dataDate && dataDate !== realToday;
 
+  // Day browser: which day's payload the day-views render. selectedDate=null
+  // means the live/latest day; a set date swaps in that past day's metrics.
+  const onDayView = DAY_TABS.has(activeKey);
+  const liveDate = today?.metrics?.date;
+  const viewingDate = selectedDate || liveDate;
+  const browsing = onDayView && selectedDate && dayPayload;
+  const viewData = browsing
+    ? { ...today, metrics: dayPayload.metrics, activities: dayPayload.activities }
+    : today;
+  const idx = days.indexOf(viewingDate);
+  const canPrev = idx > 0;
+  const canNext = idx >= 0 && idx < days.length - 1;
+
   return (
     <div className="min-h-screen text-neutral-100">
       <div className="mx-auto max-w-6xl px-4 pb-16 pt-5">
@@ -195,7 +225,7 @@ export default function App() {
             <h1 className="text-xl font-bold tracking-tight">Recovery Dashboard</h1>
             <p className="text-[11px] text-neutral-600">
               {caps?.device_name ? `Garmin ${caps.device_name}` : "Garmin"} · local &amp; private
-              {staleDay && <span className="ml-1 text-amber-500/80">· showing {dataDate} (today not synced yet)</span>}
+              {staleDay && !browsing && <span className="ml-1 text-amber-500/80">· showing {dataDate} (today not synced yet)</span>}
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -235,6 +265,8 @@ export default function App() {
             onSwitchAccount={switchAccount} onClose={() => setSettingsOpen(false)} />
         )}
 
+        <UpdateBanner enabled={settings?.check_updates !== false} />
+
         <nav className="mb-6 flex gap-1 overflow-x-auto rounded-xl border border-line/5 bg-neutral-900/50 p-1">
           {shownTabs.map(([key, label]) => (
             <button
@@ -256,6 +288,28 @@ export default function App() {
             </button>
           ))}
         </nav>
+
+        {onDayView && days.length > 1 && (
+          <div className="mb-5 flex items-center justify-center gap-2 text-sm">
+            <button disabled={!canPrev} onClick={() => canPrev && setSelectedDate(days[idx - 1])}
+              className="rounded-md px-2.5 py-1 text-neutral-400 enabled:hover:text-neutral-100 disabled:opacity-30">
+              ‹ Prev
+            </button>
+            <span className="min-w-[9rem] text-center text-neutral-300">
+              {viewingDate || "—"}{!selectedDate && <span className="text-neutral-600"> · latest</span>}
+            </span>
+            <button disabled={!canNext} onClick={() => canNext && setSelectedDate(days[idx + 1])}
+              className="rounded-md px-2.5 py-1 text-neutral-400 enabled:hover:text-neutral-100 disabled:opacity-30">
+              Next ›
+            </button>
+            {selectedDate && (
+              <button onClick={() => setSelectedDate(null)}
+                className="ml-1 rounded-md bg-line/10 px-2.5 py-1 text-neutral-200 hover:text-neutral-50">
+                Latest
+              </button>
+            )}
+          </div>
+        )}
 
         {today?.progress && !today.progress.complete && (
           <div className="mb-4 flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-2.5 text-sm text-emerald-200">
@@ -280,7 +334,7 @@ export default function App() {
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.22, ease: "easeOut" }}
             >
-              <Active today={today} trends={trends} caps={caps} units={units} onOpen={openDetail} insights={insights} />
+              <Active today={viewData} trends={trends} caps={caps} units={units} onOpen={openDetail} insights={insights} />
             </motion.div>
           </AnimatePresence>
         )}

@@ -105,6 +105,25 @@ def create_app(db_path=cfg.DB_PATH, client_factory=None,
             },
         })
 
+    @app.get("/api/days")
+    def days():
+        # Dates that have data, for stepping back through history.
+        return jsonify({"dates": db.get_dates(db_path)})
+
+    @app.get("/api/day/<date>")
+    def day(date):
+        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", date):
+            return jsonify({"error": "bad date"}), 400
+        # Same day-shaped payload as /api/today, for an arbitrary past date.
+        # perf/records/sync are global (not date-specific) so the views still work.
+        return jsonify({
+            "metrics": db.get_daily(db_path, date),
+            "activities": db.get_activities_on(db_path, date),
+            "perf": db.get_latest_perf(db_path),
+            "records": db.get_personal_records(db_path),
+            "sync": db.get_last_sync(db_path),
+        })
+
     @app.get("/api/insights")
     def insights():
         from backend import insights as ins

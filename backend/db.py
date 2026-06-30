@@ -229,11 +229,27 @@ def get_existing_dates(path, days):
         return {r["date"] for r in rows}
 
 
+def get_dates(path):
+    """All dates that have a daily row, ascending. Powers the day browser."""
+    with _conn(path) as c:
+        rows = c.execute("SELECT date FROM daily_metrics ORDER BY date").fetchall()
+        return [r["date"] for r in rows]
+
+
 def get_recent_activities(path, limit):
     with _conn(path) as c:
         rows = c.execute(
             "SELECT * FROM activities ORDER BY date DESC, activity_id DESC LIMIT ?",
             (limit,)).fetchall()
+        return [dict(r) for r in rows]
+
+
+def get_activities_on(path, date):
+    """Activities recorded on a specific date (for the day browser)."""
+    with _conn(path) as c:
+        rows = c.execute(
+            "SELECT * FROM activities WHERE date=? ORDER BY activity_id DESC", (date,)
+        ).fetchall()
         return [dict(r) for r in rows]
 
 
