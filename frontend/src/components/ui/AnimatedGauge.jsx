@@ -27,7 +27,7 @@ export default function AnimatedGauge({
       className={"flex flex-col items-center " + (onClick ? "cursor-pointer hover:opacity-90 transition-opacity" : "")}>
       <div className="relative" style={{ width: size, height: size }}>
         <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-          <circle cx={cx} cy={cx} r={R} fill="none" stroke="#27272a" strokeWidth="11" />
+          <circle cx={cx} cy={cx} r={R} fill="none" strokeWidth="11" style={{ stroke: "rgb(var(--neutral-800))" }} />
           {value != null && (
             <motion.circle
               cx={cx}

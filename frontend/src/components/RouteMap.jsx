@@ -20,7 +20,7 @@ export default function RouteMap({ polyline, height = 320 }) {
 
   if (pts.length < 2) {
     return (
-      <div className="rounded-xl border border-dashed border-white/10 bg-neutral-950/40">
+      <div className="rounded-xl border border-dashed border-line/10 bg-neutral-950/40">
         <NoData label="No GPS route for this activity" height={height} />
       </div>
     );
@@ -36,7 +36,7 @@ export default function RouteMap({ polyline, height = 320 }) {
   const end = pts[pts.length - 1];
 
   return (
-    <div className="overflow-hidden rounded-xl border border-white/5" style={{ height }}>
+    <div className="overflow-hidden rounded-xl border border-line/5" style={{ height }}>
       <MapContainer
         bounds={bounds}
         boundsOptions={{ padding: [24, 24] }}

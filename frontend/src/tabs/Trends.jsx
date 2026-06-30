@@ -94,7 +94,7 @@ export default function Trends({ today, trends, caps, onOpen }) {
           {records.length === 0 ? (
             <NoData />
           ) : (
-            <ul className="divide-y divide-white/5 max-h-[260px] overflow-y-auto">
+            <ul className="divide-y divide-line/5 max-h-[260px] overflow-y-auto">
               {records.map((r) => (
                 <li key={r.id} className="flex items-center justify-between py-2 text-sm">
                   <div>

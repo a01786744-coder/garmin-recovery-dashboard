@@ -30,7 +30,7 @@ export default function DetailPanel({ metricKey, trends90, today, insights, onCl
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
           onClick={onClose}>
           <motion.aside
-            className="h-full w-full max-w-xl overflow-y-auto border-l border-white/10 bg-neutral-950 p-5"
+            className="h-full w-full max-w-xl overflow-y-auto border-l border-line/10 bg-neutral-950 p-5"
             initial={{ x: 40, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: 40, opacity: 0 }}
             transition={{ type: "spring", stiffness: 320, damping: 34 }}
             onClick={(e) => e.stopPropagation()}>

@@ -83,7 +83,7 @@ export default function Overview({ today, caps, onOpen, insights }) {
         {acts.length === 0 ? (
           <NoData />
         ) : (
-          <ul className="divide-y divide-white/5">
+          <ul className="divide-y divide-line/5">
             {acts.slice(0, 5).map((a) => (
               <li key={a.activity_id} className="flex items-center justify-between py-2 text-sm">
                 <span className="text-neutral-200">{titleCase(a.type || "activity")}</span>

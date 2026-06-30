@@ -10,7 +10,7 @@ export default function Card({ children, className = "", hover = true, ...rest }
       }}
       whileHover={hover ? { y: -3, transition: { duration: 0.15 } } : undefined}
       className={
-        "rounded-2xl border border-white/5 bg-neutral-900/60 backdrop-blur-sm " +
+        "rounded-2xl border border-line/5 bg-neutral-900/60 backdrop-blur-sm " +
         "shadow-lg shadow-black/20 p-4 " +
         className
       }

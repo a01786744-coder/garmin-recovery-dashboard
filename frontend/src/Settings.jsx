@@ -30,7 +30,7 @@ export default function Settings({ settings, onChange, onSwitchAccount, onClose 
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.25, ease: "easeOut" }}
         onClick={(e) => e.stopPropagation()}
-        className="mt-10 w-full max-w-md rounded-2xl border border-white/10 bg-neutral-900 p-5 shadow-2xl"
+        className="mt-10 w-full max-w-md rounded-2xl border border-line/10 bg-neutral-900 p-5 shadow-2xl"
       >
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-bold text-neutral-50">Settings</h2>
@@ -40,11 +40,11 @@ export default function Settings({ settings, onChange, onSwitchAccount, onClose 
         <div className="space-y-5">
           {/* Units */}
           <Row label="Units">
-            <div className="flex gap-1 rounded-lg border border-white/10 bg-neutral-950/60 p-0.5">
+            <div className="flex gap-1 rounded-lg border border-line/10 bg-neutral-950/60 p-0.5">
               {["metric", "imperial"].map((u) => (
                 <button key={u} onClick={() => onChange({ units: u })}
                   className={"rounded-md px-3 py-1 text-sm capitalize transition-colors " +
-                    (s.units === u ? "bg-emerald-600 text-white" : "text-neutral-400 hover:text-neutral-200")}>
+                    (s.units === u ? "bg-emerald-600 text-neutral-50" : "text-neutral-400 hover:text-neutral-200")}>
                   {u}
                 </button>
               ))}
@@ -81,22 +81,22 @@ export default function Settings({ settings, onChange, onSwitchAccount, onClose 
           </div>
 
           {/* Export */}
-          <div className="border-t border-white/10 pt-4">
+          <div className="border-t border-line/10 pt-4">
             <div className="mb-2 text-sm text-neutral-300">Export your data</div>
             <div className="flex gap-2">
               <a href={exportUrl("json")} download
-                className="rounded-lg border border-white/10 bg-neutral-800/80 px-3 py-1.5 text-sm text-neutral-200 hover:bg-neutral-700">
+                className="rounded-lg border border-line/10 bg-neutral-800/80 px-3 py-1.5 text-sm text-neutral-200 hover:bg-neutral-700">
                 JSON
               </a>
               <a href={exportUrl("csv")} download
-                className="rounded-lg border border-white/10 bg-neutral-800/80 px-3 py-1.5 text-sm text-neutral-200 hover:bg-neutral-700">
+                className="rounded-lg border border-line/10 bg-neutral-800/80 px-3 py-1.5 text-sm text-neutral-200 hover:bg-neutral-700">
                 CSV (daily)
               </a>
             </div>
           </div>
 
           {/* Account */}
-          <div className="border-t border-white/10 pt-4">
+          <div className="border-t border-line/10 pt-4">
             {!confirmSwitch ? (
               <button onClick={() => setConfirmSwitch(true)}
                 className="text-sm text-red-400 hover:text-red-300">
@@ -110,7 +110,7 @@ export default function Settings({ settings, onChange, onSwitchAccount, onClose 
                 </p>
                 <div className="mt-2 flex gap-2">
                   <button onClick={onSwitchAccount}
-                    className="rounded-md bg-red-600 px-3 py-1 text-sm font-semibold text-white hover:bg-red-500">
+                    className="rounded-md bg-red-600 px-3 py-1 text-sm font-semibold text-neutral-50 hover:bg-red-500">
                     Switch &amp; erase
                   </button>
                   <button onClick={() => setConfirmSwitch(false)}
@@ -152,7 +152,7 @@ function NumberInput({ value, min, max, onCommit }) {
       onChange={(e) => setV(e.target.value)}
       onBlur={commit}
       onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
-      className="w-20 rounded-lg border border-white/10 bg-neutral-950/60 px-2 py-1 text-right text-sm text-neutral-100 outline-none focus:border-emerald-500/60"
+      className="w-20 rounded-lg border border-line/10 bg-neutral-950/60 px-2 py-1 text-right text-sm text-neutral-100 outline-none focus:border-emerald-500/60"
     />
   );
 }

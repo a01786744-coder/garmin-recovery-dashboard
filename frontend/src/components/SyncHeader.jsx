@@ -32,7 +32,7 @@ export default function SyncHeader({ sync, onRetry, syncing }) {
         whileTap={{ scale: 0.95 }}
         onClick={onRetry}
         disabled={syncing}
-        className="rounded-lg border border-white/10 bg-neutral-800/80 px-3 py-1.5 text-neutral-200
+        className="rounded-lg border border-line/10 bg-neutral-800/80 px-3 py-1.5 text-neutral-200
                    hover:bg-neutral-700 disabled:opacity-50 transition-colors"
       >
         {syncing ? "Syncing…" : "Retry"}

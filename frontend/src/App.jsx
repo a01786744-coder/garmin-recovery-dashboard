@@ -30,6 +30,9 @@ export default function App() {
   const [trends, setTrends] = useState(null);
   const [caps, setCaps] = useState(null);
   const [settings, setSettings] = useState(null);
+  const [theme, setTheme] = useState(
+    () => (document.documentElement.dataset.theme === "light" ? "light" : "dark")
+  );
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [tab, setTab] = useState("overview");
   const [syncing, setSyncing] = useState(false);
@@ -97,6 +100,24 @@ export default function App() {
     return () => clearInterval(id);
   }, [authed, load]);
 
+  // Apply the theme from settings once loaded (source of truth), mirroring it to
+  // localStorage so the next boot paints the right theme before settings arrive.
+  useEffect(() => {
+    if (!settings?.theme) return;
+    setTheme(settings.theme);
+    document.documentElement.dataset.theme = settings.theme;
+    localStorage.setItem("theme", settings.theme);
+  }, [settings?.theme]);
+
+  const toggleTheme = () => {
+    const next = theme === "light" ? "dark" : "light";
+    setTheme(next);                                   // snappy UI feedback
+    document.documentElement.dataset.theme = next;
+    localStorage.setItem("theme", next);
+    setSettings((s) => ({ ...(s || {}), theme: next }));
+    postSettings({ theme: next }).catch(() => {});    // persist to settings.json
+  };
+
   const saveSettings = async (partial) => {
     try { setSettings(await postSettings(partial)); } catch (e) { /* ignore */ }
   };
@@ -140,7 +161,7 @@ export default function App() {
               try reopening the app.
             </p>
             <button onClick={() => { setAuthError(false); checkAuth(); }}
-              className="rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-emerald-500">
+              className="rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-neutral-50 hover:bg-emerald-500">
               Try again
             </button>
           </>
@@ -177,6 +198,22 @@ export default function App() {
           </div>
           <div className="flex items-center gap-3">
             <SyncHeader sync={today?.sync} onRetry={retry} syncing={syncing} />
+            <button onClick={toggleTheme} aria-label="Toggle light/dark theme"
+              title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              className="text-neutral-500 hover:text-neutral-200">
+              {theme === "dark" ? (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="4" />
+                  <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+                </svg>
+              ) : (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                </svg>
+              )}
+            </button>
             <button onClick={() => setSettingsOpen(true)} title="Settings"
               className="text-neutral-500 hover:text-neutral-200" aria-label="Settings">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -196,7 +233,7 @@ export default function App() {
             onSwitchAccount={switchAccount} onClose={() => setSettingsOpen(false)} />
         )}
 
-        <nav className="mb-6 flex gap-1 overflow-x-auto rounded-xl border border-white/5 bg-neutral-900/50 p-1">
+        <nav className="mb-6 flex gap-1 overflow-x-auto rounded-xl border border-line/5 bg-neutral-900/50 p-1">
           {shownTabs.map(([key, label]) => (
             <button
               key={key}
@@ -209,7 +246,7 @@ export default function App() {
               {activeKey === key && (
                 <motion.span
                   layoutId="tabpill"
-                  className="absolute inset-0 rounded-lg bg-white/10"
+                  className="absolute inset-0 rounded-lg bg-line/10"
                   transition={{ type: "spring", stiffness: 400, damping: 32 }}
                 />
               )}

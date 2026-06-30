@@ -13,6 +13,8 @@ DEFAULTS = {
     "sync_interval_minutes": 30,  # clamped 5..240
     "baseline_window_days": 30,   # Recovery baseline window, clamped 7..60
     "hidden_tabs": [],            # subset of TAB_KEYS the user chose to hide
+    "theme": "dark",              # "dark" | "light"
+    "check_updates": True,        # check GitHub for newer releases on launch
 }
 
 
@@ -31,6 +33,8 @@ def _validate(raw):
     s["baseline_window_days"] = _clamp(s["baseline_window_days"], 7, 60, 30)
     tabs = s["hidden_tabs"] if isinstance(s["hidden_tabs"], list) else []
     s["hidden_tabs"] = [t for t in tabs if t in TAB_KEYS]
+    s["theme"] = s["theme"] if s["theme"] in ("dark", "light") else "dark"
+    s["check_updates"] = bool(s["check_updates"])
     return s
 
 

@@ -59,7 +59,7 @@ export default function Login({ onSuccess }) {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35, ease: "easeOut" }}
-        className="w-full max-w-sm rounded-2xl border border-white/5 bg-neutral-900/70 p-6 shadow-xl shadow-black/30 backdrop-blur"
+        className="w-full max-w-sm rounded-2xl border border-line/5 bg-neutral-900/70 p-6 shadow-xl shadow-black/30 backdrop-blur"
       >
         <h1 className="text-lg font-bold text-neutral-50">Recovery Dashboard</h1>
         <p className="mb-5 text-xs text-neutral-500">
@@ -72,12 +72,12 @@ export default function Login({ onSuccess }) {
             <input
               type="email" autoFocus value={email} onChange={(e) => setEmail(e.target.value)}
               placeholder="Garmin email"
-              className="w-full rounded-lg border border-white/10 bg-neutral-950/60 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-emerald-500/60"
+              className="w-full rounded-lg border border-line/10 bg-neutral-950/60 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-emerald-500/60"
             />
             <input
               type="password" value={password} onChange={(e) => setPassword(e.target.value)}
               placeholder="Password"
-              className="w-full rounded-lg border border-white/10 bg-neutral-950/60 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-emerald-500/60"
+              className="w-full rounded-lg border border-line/10 bg-neutral-950/60 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-emerald-500/60"
             />
             <Submit busy={busy} label="Sign in" />
           </form>
@@ -90,7 +90,7 @@ export default function Login({ onSuccess }) {
               type="text" inputMode="numeric" autoFocus value={code}
               onChange={(e) => setCode(e.target.value.trim())}
               placeholder="6-digit code"
-              className="w-full rounded-lg border border-white/10 bg-neutral-950/60 px-3 py-2 text-center text-lg tracking-widest text-neutral-100 outline-none focus:border-emerald-500/60"
+              className="w-full rounded-lg border border-line/10 bg-neutral-950/60 px-3 py-2 text-center text-lg tracking-widest text-neutral-100 outline-none focus:border-emerald-500/60"
             />
             <Submit busy={busy} label="Verify" />
             <button type="button" onClick={() => { setStage("login"); setCode(""); setError(null); }}
@@ -114,7 +114,7 @@ function Submit({ busy, label }) {
   return (
     <motion.button
       whileTap={{ scale: 0.98 }} type="submit" disabled={busy}
-      className="w-full rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
+      className="w-full rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-neutral-50 hover:bg-emerald-500 disabled:opacity-50"
     >
       {busy ? "Working…" : label}
     </motion.button>

@@ -30,7 +30,7 @@ export default function MiniArea({
           </linearGradient>
         </defs>
         {band && band.low != null && band.high != null && (
-          <ReferenceArea y1={band.low} y2={band.high} fill="#ffffff" fillOpacity={0.05} />
+          <ReferenceArea y1={band.low} y2={band.high} fill="#808080" fillOpacity={0.12} />
         )}
         <XAxis dataKey="x" hide={!xTickFormatter} tickFormatter={xTickFormatter}
           stroke="#52525b" fontSize={10} tickLine={false} axisLine={false} minTickGap={40} />

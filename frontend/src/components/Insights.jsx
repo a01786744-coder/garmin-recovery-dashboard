@@ -67,7 +67,7 @@ export default function InsightsSection({ insights, caps }) {
               </div>
             );
           })}
-          <div className="flex items-center justify-between text-sm pt-1 border-t border-white/5">
+          <div className="flex items-center justify-between text-sm pt-1 border-t border-line/5">
             <span className="text-neutral-400">Workouts</span>
             <span className="text-neutral-200">{weekly?.workouts?.this ?? "—"}</span>
           </div>
@@ -76,7 +76,7 @@ export default function InsightsSection({ insights, caps }) {
           <div className="mt-3 flex flex-wrap gap-2">
             {streakItems.map(([k, label]) => (
               <motion.span key={k} initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-                className="rounded-full bg-white/5 px-2.5 py-1 text-xs text-neutral-300">
+                className="rounded-full bg-line/5 px-2.5 py-1 text-xs text-neutral-300">
                 🔥 {streaks[k]} {label}
               </motion.span>
             ))}

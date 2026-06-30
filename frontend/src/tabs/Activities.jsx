@@ -31,7 +31,7 @@ function SplitsTable({ splits, units }) {
         </thead>
         <tbody className="text-neutral-300">
           {splits.map((s, i) => (
-            <tr key={i} className="border-t border-white/5">
+            <tr key={i} className="border-t border-line/5">
               <td className="py-1.5 pr-3 text-neutral-500">{i + 1}</td>
               <td className="pr-3">{meters(s.distance, units)}</td>
               <td className="pr-3">{secsToHms(s.duration)}</td>
@@ -123,7 +123,7 @@ export default function Activities({ today, units }) {
                   onClick={() => setSel(a)}
                   className={
                     "w-full rounded-xl px-3 py-2.5 text-left transition-colors " +
-                    (active ? "bg-white/10" : "hover:bg-white/5")
+                    (active ? "bg-line/10" : "hover:bg-line/5")
                   }
                 >
                   <div className="flex items-center justify-between">

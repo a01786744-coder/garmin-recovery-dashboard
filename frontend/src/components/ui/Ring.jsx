@@ -12,7 +12,7 @@ export default function Ring({ value, goal, color = "#22c55e", size = 84, label,
     <div className="flex flex-col items-center">
       <div className="relative" style={{ width: size, height: size }}>
         <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-          <circle cx={cx} cy={cx} r={R} fill="none" stroke="#27272a" strokeWidth="7" />
+          <circle cx={cx} cy={cx} r={R} fill="none" strokeWidth="7" style={{ stroke: "rgb(var(--neutral-800))" }} />
           <motion.circle
             cx={cx}
             cy={cx}
