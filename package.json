@@ -8,9 +8,9 @@
     "build:frontend": "npm --prefix frontend run build",
     "build:backend": "node scripts/freeze.js",
     "start": "npm run build:frontend && electron .",
-    "dist": "npm run build:frontend && npm run build:backend && electron-builder",
-    "dist:win": "npm run build:frontend && npm run build:backend && electron-builder --win",
-    "dist:mac": "npm run build:frontend && npm run build:backend && electron-builder --mac",
+    "dist": "npm run build:frontend && npm run build:backend && electron-builder --publish never",
+    "dist:win": "npm run build:frontend && npm run build:backend && electron-builder --win --publish never",
+    "dist:mac": "npm run build:frontend && npm run build:backend && electron-builder --mac --publish never",
     "test:backend": "python -m pytest backend -v"
   },
   "devDependencies": {
