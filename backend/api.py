@@ -110,11 +110,16 @@ def create_app(db_path=cfg.DB_PATH, client_factory=None,
         from backend import insights as ins
         daily = db.get_trends(db_path, 90)
         acts = db.get_recent_activities(db_path, 50)
+        primary = db.get_primary_day(db_path) or {}
         return jsonify({
             "weekly": ins.weekly_recap(daily, acts),
             "streaks": ins.streaks(daily, acts),
             "insights": ins.auto_insights(daily),
             "correlations": ins.correlations(daily),
+            "recap": {
+                "morning": ins.morning_summary(primary, daily),
+                "afternoon": ins.afternoon_summary(primary, daily),
+            },
         })
 
     @app.get("/api/trends")

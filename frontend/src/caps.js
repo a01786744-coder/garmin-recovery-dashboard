@@ -14,6 +14,7 @@ export function visible(caps, cat) {
 // categories are unsupported. Overview is the core landing tab — never hidden.
 const TAB_CATS = {
   overview: null,
+  today: null,
   sleep: ["sleep", "sleep_detail", "respiration", "hrv"],
   training: ["training_readiness", "training_load_acwr", "intensity_minutes", "stress"],
   activities: ["activities"],

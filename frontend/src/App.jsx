@@ -10,6 +10,7 @@ import SyncHeader from "./components/SyncHeader.jsx";
 import Login from "./Login.jsx";
 import Settings from "./Settings.jsx";
 import Overview from "./tabs/Overview.jsx";
+import Today from "./tabs/Today.jsx";
 import Sleep from "./tabs/Sleep.jsx";
 import Training from "./tabs/Training.jsx";
 import Activities from "./tabs/Activities.jsx";
@@ -17,13 +18,14 @@ import Trends from "./tabs/Trends.jsx";
 
 const TABS = [
   ["overview", "Overview"],
+  ["today", "Today"],
   ["sleep", "Sleep"],
   ["training", "Strain & Training"],
   ["activities", "Activities"],
   ["trends", "Trends"],
 ];
 
-const VIEWS = { overview: Overview, sleep: Sleep, training: Training, activities: Activities, trends: Trends };
+const VIEWS = { overview: Overview, today: Today, sleep: Sleep, training: Training, activities: Activities, trends: Trends };
 
 export default function App() {
   const [today, setToday] = useState(null);

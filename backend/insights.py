@@ -137,3 +137,77 @@ def correlations(daily):
             "detail": f"{round(st['high'])} vs {round(st['low'])}",
         })
     return out
+
+
+# --- Today-tab recap summaries (plain-language; empty on thin data) ---
+
+def _hm(seconds):
+    h = int(seconds // 3600)
+    m = round((seconds % 3600) / 60)
+    return f"{h}h {m}m" if h else f"{m}m"
+
+
+def _band_word(score):
+    if score >= GREEN_RECOVERY:
+        return "green"
+    return "yellow" if score >= 34 else "red"
+
+
+def _hrv_baseline(daily):
+    vals = _vals(daily or [], "hrv_last_night")
+    return round(mean(vals)) if len(vals) >= 5 else None
+
+
+def _near(x, base):
+    if x >= base * 1.05:
+        return "above"
+    if x <= base * 0.95:
+        return "below"
+    return "near"
+
+
+def _join(parts):
+    if not parts:
+        return ""
+    text = ", ".join(parts)
+    return text[0].upper() + text[1:] + "."
+
+
+def morning_summary(metrics, daily):
+    """One-line overnight-recovery recap from today's metrics (+ history for the
+    HRV baseline). Empty string when nothing usable is present."""
+    m = metrics or {}
+    parts = []
+    sleep_s = _sleep_seconds(m)
+    if sleep_s:
+        clause = f"you slept {_hm(sleep_s)}"
+        if m.get("sleep_score") is not None:
+            clause += f" (sleep score {round(m['sleep_score'])})"
+        parts.append(clause)
+    if m.get("recovery_score") is not None:
+        parts.append(f"recovery is {_band_word(m['recovery_score'])} at {round(m['recovery_score'])}")
+    hrv = m.get("hrv_last_night")
+    if hrv is not None:
+        base = _hrv_baseline(daily)
+        if base is not None:
+            parts.append(f"overnight HRV {round(hrv)}ms is {_near(hrv, base)} your {base}ms baseline")
+        else:
+            parts.append(f"overnight HRV is {round(hrv)}ms")
+    if m.get("training_readiness_score") is not None:
+        parts.append(f"Training Readiness is {round(m['training_readiness_score'])}")
+    return _join(parts)
+
+
+def afternoon_summary(metrics, daily):
+    """One-line day-so-far recap from today's metrics. Empty when nothing usable."""
+    m = metrics or {}
+    parts = []
+    if m.get("body_battery") is not None:
+        parts.append(f"Body Battery is at {round(m['body_battery'])}")
+    if m.get("steps") is not None:
+        parts.append(f"you're at {round(m['steps']):,} steps")
+    if m.get("stress_avg") is not None:
+        parts.append(f"average stress is {round(m['stress_avg'])}")
+    if m.get("intensity_weekly_total") is not None and m.get("intensity_weekly_goal"):
+        parts.append(f"{round(m['intensity_weekly_total'])} of {round(m['intensity_weekly_goal'])} weekly intensity minutes")
+    return _join(parts)
