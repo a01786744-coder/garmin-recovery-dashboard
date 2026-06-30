@@ -1,0 +1,73 @@
+name: build
+
+# Builds the Windows (.exe) and macOS (.dmg) installers in the cloud so a Mac
+# build can be produced without a Mac. On a version tag (vX.Y.Z) the artifacts
+# are attached to a GitHub Release for friends to download.
+on:
+  push:
+    branches: [main, build-dashboard]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write # needed to create/upload the GitHub Release on tags
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: win
+            ext: exe
+          - os: macos-latest # Apple Silicon (arm64) runner
+            platform: mac
+            ext: dmg
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Python build deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-build.txt
+
+      - name: Run backend tests
+        run: python -m pytest backend -q
+
+      - name: Install Node deps (root + frontend)
+        run: |
+          npm ci
+          npm --prefix frontend ci
+
+      - name: Build installer (${{ matrix.platform }})
+        run: npm run dist:${{ matrix.platform }}
+        env:
+          # Unsigned build: don't let electron-builder fail looking for a cert.
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-${{ matrix.platform }}
+          path: release/*.${{ matrix.ext }}
+          if-no-files-found: error
+
+      - name: Publish to GitHub Release (tags only)
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Idempotent: first matrix job creates the release, the other reuses it.
+          gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --generate-notes --verify-tag 2>/dev/null || true
+          gh release upload "$GITHUB_REF_NAME" release/*.${{ matrix.ext }} --clobber
