@@ -3,6 +3,40 @@
 All notable changes to the Garmin Recovery Dashboard. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/). Dates are YYYY-MM-DD.
 
+## [3.2.0] — 2026-06-30
+
+### Added
+- **Today tab** — a time-aware daily recap: a **Morning report** before noon and
+  an **Afternoon recap** after, with a toggle. Morning shows Recovery / Sleep /
+  Training-Readiness gauges, last night's sleep + stages, and HRV / RHR /
+  Body-Battery vitals; afternoon shows Body Battery (and how much it has drained
+  since the morning), stress, intensity, steps / calories / floors, and the day's
+  workouts. A plain-language recap line summarises each, computed from your data
+  (no fabrication — clauses without data are dropped).
+- **Light / dark theme** — a sun/moon toggle in the header; the choice is
+  remembered. Dark mode is unchanged.
+- **Custom app icon** — a recovery-ring + heartbeat mark on Windows and macOS,
+  replacing the default Electron icon.
+- **Browse past days** — a date navigator (Prev / Next / Latest) steps back
+  through any previous day's Overview, Sleep, and Strain & Training views.
+- **Update notifier** — a dismissible banner when a newer GitHub release exists
+  (one anonymous GitHub call on launch; opt out via the `check_updates` setting).
+
+### Distribution
+- **macOS support.** A GitHub Actions workflow builds the Windows `.exe` and a
+  macOS `.dmg` (Apple Silicon) in the cloud and attaches them to a GitHub Release
+  on each version tag — so a Mac build is produced without a Mac. Both are
+  unsigned (first-open: Windows "Run anyway"; macOS right-click → Open).
+- Cross-platform freeze script (`scripts/freeze.js`); `dist:win` / `dist:mac`.
+
+### Fixed
+- electron-builder no longer attempts an auto-publish in CI (it built the
+  installer, then failed for lack of a token); publishing is a separate
+  tags-only step.
+
+### Notes
+- 110 backend tests (added: recap summaries, day-browser endpoints).
+
 ## [3.1.3] — 2026-06-23
 
 ### Fixed
@@ -166,6 +200,7 @@ Initial release.
 - No-fabrication guarantee (missing metrics → "No data"); graceful auth/rate-limit
   handling with "last synced X ago" + Retry.
 
+[3.2.0]: #320--2026-06-30
 [3.1.3]: #313--2026-06-23
 [3.1.2]: #312--2026-06-23
 [3.1.1]: #311--2026-06-23
