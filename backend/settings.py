@@ -15,6 +15,8 @@ DEFAULTS = {
     "hidden_tabs": [],            # subset of TAB_KEYS the user chose to hide
     "theme": "dark",              # "dark" | "light"
     "check_updates": True,        # check GitHub for newer releases on launch
+    "phone_access": False,        # bind to LAN/Tailscale so a phone can reach it
+    "access_pin": "",             # required for any non-loopback API access
 }
 
 
@@ -35,6 +37,8 @@ def _validate(raw):
     s["hidden_tabs"] = [t for t in tabs if t in TAB_KEYS]
     s["theme"] = s["theme"] if s["theme"] in ("dark", "light") else "dark"
     s["check_updates"] = bool(s["check_updates"])
+    s["phone_access"] = bool(s["phone_access"])
+    s["access_pin"] = str(s.get("access_pin") or "")
     return s
 
 
