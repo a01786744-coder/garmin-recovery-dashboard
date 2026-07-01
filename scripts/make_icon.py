@@ -99,6 +99,14 @@ def build():
     icon.resize((SIZE, SIZE), Image.LANCZOS).save(OUT)
     print(f"wrote {OUT} ({SIZE}x{SIZE})")
 
+    # PWA icons for the web app (iOS apple-touch-icon is 180; manifest uses 192/512).
+    base = icon.resize((512, 512), Image.LANCZOS)
+    pub = OUT.parent.parent / "frontend" / "public"
+    pub.mkdir(parents=True, exist_ok=True)
+    for size in (180, 192, 512):
+        base.resize((size, size), Image.LANCZOS).save(pub / f"icon-{size}.png")
+        print(f"wrote {pub / f'icon-{size}.png'}")
+
 
 if __name__ == "__main__":
     build()
