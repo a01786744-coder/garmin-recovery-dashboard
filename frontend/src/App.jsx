@@ -265,7 +265,7 @@ export default function App() {
               </svg>
             </button>
             <button onClick={logout}
-              className="text-xs text-neutral-500 hover:text-neutral-300">
+              className="whitespace-nowrap text-xs text-neutral-500 hover:text-neutral-300">
               Sign out
             </button>
           </div>
