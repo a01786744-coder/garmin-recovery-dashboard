@@ -25,3 +25,4 @@ release/
 
 # CI artifact downloads
 _ci_artifacts/
+_rel/
