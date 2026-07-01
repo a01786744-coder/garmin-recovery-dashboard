@@ -95,6 +95,27 @@ export default function Settings({ settings, onChange, onSwitchAccount, onClose 
             </div>
           </div>
 
+          {/* Phone access */}
+          <div className="border-t border-line/10 pt-4">
+            <label className="flex items-center gap-2 text-sm text-neutral-300">
+              <input type="checkbox" checked={!!s.phone_access}
+                onChange={(e) => onChange({ phone_access: e.target.checked })}
+                className="h-4 w-4 accent-emerald-600" />
+              Enable phone access (LAN + Tailscale)
+            </label>
+            <div className="mt-2 flex items-center justify-between gap-4">
+              <div>
+                <div className="text-sm text-neutral-300">Access PIN</div>
+                <div className="text-[11px] text-neutral-600">required for any phone/network access</div>
+              </div>
+              <PinInput value={s.access_pin} onCommit={(v) => onChange({ access_pin: v })} />
+            </div>
+            <p className="mt-1 text-[11px] text-neutral-600">
+              Relaunch to apply, then open <span className="text-neutral-400">http://&lt;your-pc&gt;:5057</span> on
+              your phone (Safari → Add to Home Screen).
+            </p>
+          </div>
+
           {/* Account */}
           <div className="border-t border-line/10 pt-4">
             {!confirmSwitch ? (
@@ -136,6 +157,19 @@ function Row({ label, hint, children }) {
       </div>
       {children}
     </div>
+  );
+}
+
+function PinInput({ value, onCommit }) {
+  const [v, setV] = useState(value || "");
+  return (
+    <input
+      type="text" inputMode="numeric" value={v} placeholder="set a PIN"
+      onChange={(e) => setV(e.target.value)}
+      onBlur={() => onCommit(v.trim())}
+      onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+      className="w-28 rounded-lg border border-line/10 bg-neutral-950/60 px-2 py-1 text-right text-sm text-neutral-100 outline-none focus:border-emerald-500/60"
+    />
   );
 }
 

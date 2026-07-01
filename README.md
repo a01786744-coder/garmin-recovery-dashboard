@@ -79,6 +79,29 @@ Both builds are **unsigned**, so each OS shows a one-time warning the first time
 > machine (Python, Node, and `pyinstaller` in the venv). The *recipient* needs
 > none of it.
 
+## Use it on your phone (LAN + Tailscale)
+
+The desktop app can double as a private web server your phone opens by URL — your
+data stays on your PC.
+
+1. **Enable it:** in the app, Settings → **Enable phone access** and set a **PIN**,
+   then relaunch (the server now binds to your network instead of just localhost).
+2. **On the same Wi‑Fi:** open **Safari** on your iPhone → `http://<your-pc-ip>:5057`.
+3. **From anywhere:** install **Tailscale** on your PC and iPhone (same account),
+   then open `http://<your-pc-name>:5057` (Tailscale MagicDNS) — encrypted, with
+   nothing exposed to the public internet.
+4. Enter the PIN once, then Share → **Add to Home Screen** for a full‑screen app.
+
+Only your own PC (loopback) needs no PIN; every phone/network request requires it.
+Binding to the network exposes port 5057 on your LAN, so the **PIN is what keeps
+your data private** — Tailscale‑only use is the most private setup.
+
+> **iPhone notes:** install via **Safari** (other iOS browsers can't add PWAs to
+> the home screen). Over plain `http://` iOS won't run a service worker, but the
+> home‑screen app still works via the Apple web‑app tags. For the full offline PWA
+> when away, `tailscale serve --bg 5057` gives an `https://<name>.ts.net` address
+> (a secure context). Your PC must be on when you check.
+
 ## Prerequisites (to develop or build)
 
 - **Python 3.11** (the project pins `garminconnect==0.3.2`, the newest release
