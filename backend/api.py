@@ -6,7 +6,7 @@ import threading
 import logging
 from pathlib import Path
 
-from flask import Flask, jsonify, request, Response
+from flask import Flask, jsonify, request, Response, send_from_directory, abort
 
 import backend.config as cfg
 import backend.db as db
@@ -56,8 +56,10 @@ def _clear_tokens(tokenstore):
 
 
 def create_app(db_path=cfg.DB_PATH, client_factory=None,
-               tokenstore=cfg.TOKENSTORE_DIR, auth_client_factory=None):
+               tokenstore=cfg.TOKENSTORE_DIR, auth_client_factory=None,
+               static_dir=None):
     app = Flask(__name__, static_folder=None)
+    static_dir = static_dir or cfg.resolve_static_dir()
     db.init_db(db_path)
     # Holds the in-progress GarminClient between /auth/login and /auth/mfa
     # (single-user local app, so one pending login at a time).
@@ -320,6 +322,21 @@ def create_app(db_path=cfg.DB_PATH, client_factory=None,
             w.writerow(r)
         return Response(buf.getvalue(), mimetype="text/csv", headers={
             "Content-Disposition": "attachment; filename=garmin-dashboard-daily.csv"})
+
+    # --- Serve the built SPA (the /api routes above take precedence) ---
+
+    @app.get("/")
+    def _spa_index():
+        return send_from_directory(static_dir, "index.html")
+
+    @app.get("/<path:filename>")
+    def _spa_static(filename):
+        if filename.startswith("api/"):
+            abort(404)
+        full = os.path.join(static_dir, filename)
+        if os.path.isfile(full):
+            return send_from_directory(static_dir, filename)
+        return send_from_directory(static_dir, "index.html")  # SPA fallback
 
     return app
 

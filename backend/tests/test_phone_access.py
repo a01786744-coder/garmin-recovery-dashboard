@@ -45,3 +45,32 @@ def test_remote_denied_when_no_pin_configured(tmp_path):
     r = c.get("/api/sync-status", environ_base={"REMOTE_ADDR": "10.0.0.9"},
               headers={"X-Access-Pin": ""})
     assert r.status_code == 401
+
+
+def _client_static(tmp_path):
+    dist = tmp_path / "dist"
+    (dist / "assets").mkdir(parents=True)
+    (dist / "index.html").write_text("<html>APP-SHELL</html>", encoding="utf-8")
+    (dist / "assets" / "app.js").write_text("console.log(1)", encoding="utf-8")
+    p = tmp_path / "dashboard.db"
+    db.init_db(p)
+    app = create_app(p, client_factory=lambda: MagicMock(),
+                     tokenstore=tmp_path / "garth", static_dir=str(dist))
+    return app.test_client()
+
+
+def test_serves_index_and_assets(tmp_path):
+    c = _client_static(tmp_path)
+    assert b"APP-SHELL" in c.get("/").data
+    assert c.get("/assets/app.js").status_code == 200
+
+
+def test_spa_fallback_serves_index_for_unknown_path(tmp_path):
+    c = _client_static(tmp_path)
+    r = c.get("/sleep")
+    assert r.status_code == 200 and b"APP-SHELL" in r.data
+
+
+def test_api_route_not_shadowed_by_static(tmp_path):
+    c = _client_static(tmp_path)
+    assert c.get("/api/sync-status").get_json() is not None

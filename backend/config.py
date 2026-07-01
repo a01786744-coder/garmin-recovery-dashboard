@@ -27,6 +27,15 @@ def resolve_data_dir(environ=None, project_root=PROJECT_ROOT):
     return Path(override) if override else Path(project_root) / "data"
 
 
+def resolve_static_dir(environ=None, project_root=PROJECT_ROOT):
+    """Where the built frontend lives, for Flask to serve. Honors
+    GARMIN_DASH_STATIC (set by the Electron shell to the packaged resource dir);
+    otherwise falls back to <project_root>/frontend/dist for development."""
+    environ = os.environ if environ is None else environ
+    override = environ.get("GARMIN_DASH_STATIC")
+    return override if override else str(Path(project_root) / "frontend" / "dist")
+
+
 DATA_DIR = resolve_data_dir()
 DB_PATH = DATA_DIR / "dashboard.db"
 TOKENSTORE_DIR = DATA_DIR / ".garth"
