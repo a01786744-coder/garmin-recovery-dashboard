@@ -62,16 +62,36 @@ is reachable from a phone. Changes:
   on every request. Loopback (Electron) never sees the prompt.
 - Constant-time PIN comparison; PIN never logged (extend the existing redaction).
 
-## PWA
+## PWA (iOS-first, since the owner uses an iPhone)
 
 - `manifest.webmanifest` (name, `display: standalone`, theme/background from the
   dark palette, `start_url: "/"`, icons) served by Flask and linked from
   `index.html`.
-- Icons: generate `icon-192.png` and `icon-512.png` from `build/icon.png` (extend
-  `scripts/make_icon.py` to also emit PWA sizes).
-- Minimal **service worker** caching the app shell (HTML/JS/CSS) for installability
-  and fast loads; API responses are always network (live data). Registered from
-  `main.jsx`.
+- **iOS home-screen install does NOT rely on a service worker** (iOS restricts SWs
+  to secure contexts; over plain `http://` to a LAN/Tailscale IP a SW won't
+  register). It relies on tags added to `index.html`:
+  - `<link rel="apple-touch-icon" href="/icon-180.png">`
+  - `<meta name="apple-mobile-web-app-capable" content="yes">`
+  - `<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">`
+  - `<meta name="apple-mobile-web-app-title" content="Recovery">`
+  So the full-screen home-screen app works on iPhone even over plain HTTP.
+- Icons: generate `icon-180.png` (iOS), `icon-192.png`, `icon-512.png` from
+  `build/icon.png` (extend `scripts/make_icon.py`).
+- **Service worker = progressive enhancement only.** Register it *only in a secure
+  context* (`window.isSecureContext`), so it silently no-ops on iOS-over-HTTP
+  (no error) and activates for offline app-shell caching when served over HTTPS
+  (localhost, or Tailscale Serve). API responses are always network (live data).
+
+## iOS (iPhone) viability notes
+
+- **Tailscale**: official iOS app; iPhone joins the tailnet and reaches the PC by
+  MagicDNS name from anywhere. LAN works on home Wi-Fi. Both plain HTTP + PIN.
+- **Install path**: **Safari only** (Share → Add to Home Screen). Document this.
+- **Optional HTTPS via Tailscale Serve** (`https://<name>.<tailnet>.ts.net` → local
+  `:5057`) yields a secure context → full service-worker PWA when away from home.
+  Documented as an optional upgrade, not required for the core experience.
+- **Storage**: iOS may evict a home-screen app's `localStorage` after ~7 days
+  unused → the PIN may need occasional re-entry. Acceptable.
 
 ## Responsive pass
 
@@ -84,8 +104,9 @@ the preview at mobile width + the existing desktop layout is unchanged.
 
 1. Install Tailscale on PC + phone (same login).
 2. In the app: **Settings → Enable phone access**, set a **PIN**, relaunch.
-3. Phone (home Wi-Fi): `http://<pc-lan-ip>:5057`; away: `http://<pc-name>:5057`
-   (Tailscale MagicDNS). Enter the PIN once → **Add to Home Screen**.
+3. On the iPhone, open **Safari** — home Wi-Fi: `http://<pc-lan-ip>:5057`; away:
+   `http://<pc-name>:5057` (Tailscale MagicDNS). Enter the PIN once → Share →
+   **Add to Home Screen**.
 
 ## Out of scope (YAGNI)
 
