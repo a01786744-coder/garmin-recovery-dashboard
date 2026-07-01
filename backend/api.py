@@ -15,6 +15,15 @@ from backend.sync import run_sync, sync_activity_detail
 log = logging.getLogger("api")
 
 
+def resolve_host(settings):
+    """Which interface to bind: env override, else all interfaces (LAN +
+    Tailscale) when phone access is on, else loopback only."""
+    env = os.environ.get("GARMIN_DASH_HOST")
+    if env:
+        return env
+    return "0.0.0.0" if settings.get("phone_access") else "127.0.0.1"
+
+
 class RedactingFilter(logging.Filter):
     """Defense-in-depth log scrubbing: credentials and tokens are never logged
     intentionally, but this strips anything credential/token-shaped from every
@@ -383,7 +392,9 @@ def main():
     # service" before the port is even open.
     threading.Thread(target=_scheduled_loop, args=(cfg.DB_PATH, factory),
                      daemon=True).start()
-    app.run(host="127.0.0.1", port=5057)
+    from backend import settings as st
+    host = resolve_host(st.load_settings(Path(cfg.DB_PATH).parent / "settings.json"))
+    app.run(host=host, port=5057)
 
 
 if __name__ == "__main__":

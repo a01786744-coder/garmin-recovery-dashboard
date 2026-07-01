@@ -74,3 +74,21 @@ def test_spa_fallback_serves_index_for_unknown_path(tmp_path):
 def test_api_route_not_shadowed_by_static(tmp_path):
     c = _client_static(tmp_path)
     assert c.get("/api/sync-status").get_json() is not None
+
+
+def test_resolve_host_localhost_by_default(monkeypatch):
+    import backend.api as api
+    monkeypatch.delenv("GARMIN_DASH_HOST", raising=False)
+    assert api.resolve_host({"phone_access": False}) == "127.0.0.1"
+
+
+def test_resolve_host_all_interfaces_when_enabled(monkeypatch):
+    import backend.api as api
+    monkeypatch.delenv("GARMIN_DASH_HOST", raising=False)
+    assert api.resolve_host({"phone_access": True}) == "0.0.0.0"
+
+
+def test_resolve_host_env_override(monkeypatch):
+    import backend.api as api
+    monkeypatch.setenv("GARMIN_DASH_HOST", "100.64.0.7")
+    assert api.resolve_host({"phone_access": True}) == "100.64.0.7"
