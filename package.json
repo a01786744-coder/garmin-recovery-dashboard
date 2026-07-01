@@ -23,11 +23,11 @@
     "directories": { "output": "release" },
     "files": [
       "electron/**",
-      "frontend/dist/**",
       "package.json"
     ],
     "extraResources": [
-      { "from": "pybuild/dist/garmin-backend", "to": "backend" }
+      { "from": "pybuild/dist/garmin-backend", "to": "backend" },
+      { "from": "frontend/dist", "to": "frontend" }
     ],
     "win": {
       "target": "nsis",

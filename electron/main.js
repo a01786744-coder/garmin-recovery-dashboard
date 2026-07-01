@@ -33,7 +33,15 @@ function startBackend() {
   backend = spawn(cmd, args, {
     cwd,
     stdio: app.isPackaged ? "ignore" : "inherit",
-    env: { ...process.env, GARMIN_DASH_DATA_DIR: app.getPath("userData") },
+    env: {
+      ...process.env,
+      GARMIN_DASH_DATA_DIR: app.getPath("userData"),
+      // Where the backend finds the built frontend to serve. Packaged: the
+      // extraResource copy; dev: the repo's frontend/dist.
+      GARMIN_DASH_STATIC: app.isPackaged
+        ? path.join(process.resourcesPath, "frontend")
+        : path.join(ROOT, "frontend", "dist"),
+    },
   });
   backend.on("exit", (code) => console.log("backend exited", code));
 }
