@@ -3,6 +3,25 @@
 All notable changes to the Garmin Recovery Dashboard. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/). Dates are YYYY-MM-DD.
 
+## [3.3.0] — 2026-07-01
+
+### Added
+- **Phone access (LAN + Tailscale).** The desktop app can now double as a private
+  web server your phone opens by URL — on home Wi‑Fi, or from anywhere with
+  **Tailscale**. Turn it on in **Settings → Enable phone access** and set a **PIN**;
+  your data stays on your PC.
+  - Flask serves the built SPA alongside the API from one origin; Electron loads it
+    by URL; the frontend uses same‑origin calls.
+  - A required **access PIN** gates every non‑loopback API request (your own PC
+    needs none); a PIN screen appears on the phone.
+  - **PWA**: web manifest + Apple web‑app tags + icons + a secure‑context service
+    worker — on iPhone, Safari → **Add to Home Screen** for a full‑screen app.
+  - Responsive polish for phone widths.
+
+### Notes
+- 121 backend tests. Access stays private: only your own devices reach it, PIN‑gated;
+  Tailscale keeps it off the public internet. Your PC must be on to serve the phone.
+
 ## [3.2.0] — 2026-06-30
 
 ### Added
@@ -200,6 +219,7 @@ Initial release.
 - No-fabrication guarantee (missing metrics → "No data"); graceful auth/rate-limit
   handling with "last synced X ago" + Retry.
 
+[3.3.0]: #330--2026-07-01
 [3.2.0]: #320--2026-06-30
 [3.1.3]: #313--2026-06-23
 [3.1.2]: #312--2026-06-23
