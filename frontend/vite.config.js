@@ -14,6 +14,6 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(pkg.version),
     __REPO__: JSON.stringify("a01786744-coder/garmin-recovery-dashboard"),
   },
-  server: { port: 5173 },
+  server: { port: 5173, proxy: { "/api": "http://127.0.0.1:5057" } },
   build: { outDir: "dist" },
 });

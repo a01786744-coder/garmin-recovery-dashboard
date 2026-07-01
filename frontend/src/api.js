@@ -1,6 +1,12 @@
-const BASE = "http://127.0.0.1:5057";
+const BASE = ""; // same-origin: Flask serves both the app and the API
 async function j(path, opts) {
-  const r = await fetch(BASE + path, opts);
+  const pin = localStorage.getItem("accessPin") || "";
+  const headers = { ...(opts && opts.headers), ...(pin ? { "X-Access-Pin": pin } : {}) };
+  const r = await fetch(BASE + path, { ...opts, headers });
+  if (r.status === 401) {
+    window.dispatchEvent(new Event("pin-required"));
+    throw new Error("pin_required");
+  }
   if (!r.ok) throw new Error("api " + r.status);
   return r.json();
 }

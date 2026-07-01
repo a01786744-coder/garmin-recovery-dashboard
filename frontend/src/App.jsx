@@ -13,6 +13,7 @@ import { tabVisible } from "./caps.js";
 import SyncHeader from "./components/SyncHeader.jsx";
 import UpdateBanner from "./components/UpdateBanner.jsx";
 import Login from "./Login.jsx";
+import PinGate from "./PinGate.jsx";
 import Settings from "./Settings.jsx";
 import Overview from "./tabs/Overview.jsx";
 import Today from "./tabs/Today.jsx";
@@ -51,6 +52,7 @@ export default function App() {
   const [days, setDays] = useState([]);            // all dates with data (asc)
   const [selectedDate, setSelectedDate] = useState(null);  // null = live/latest
   const [dayPayload, setDayPayload] = useState(null);      // fetched past day
+  const [pinRequired, setPinRequired] = useState(false);   // 401 from a phone
   const [detailKey, setDetailKey] = useState(null);
 
   // Resolve auth status, retrying while the backend is still starting up.
@@ -101,6 +103,13 @@ export default function App() {
   }, [trends90]);
 
   useEffect(() => { checkAuth(); }, [checkAuth]);
+
+  // The API fires "pin-required" on a 401 (a phone with no/invalid PIN).
+  useEffect(() => {
+    const h = () => setPinRequired(true);
+    window.addEventListener("pin-required", h);
+    return () => window.removeEventListener("pin-required", h);
+  }, []);
 
   useEffect(() => {
     if (authed !== true) return;
@@ -169,6 +178,7 @@ export default function App() {
     setSyncing(false);
   };
 
+  if (pinRequired) return <PinGate />;
   if (authed === false) return <Login onSuccess={onLoggedIn} />;
   if (authed === null) {
     return (

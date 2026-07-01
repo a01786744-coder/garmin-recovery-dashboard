@@ -43,7 +43,10 @@ function createWindow() {
     width: 1100, height: 800, backgroundColor: "#0a0a0a",
     webPreferences: { contextIsolation: true },
   });
-  win.loadFile(path.join(ROOT, "frontend", "dist", "index.html"));
+  // The backend now serves the SPA too; load it by URL (same origin as the API)
+  // and retry until the server has bound its port.
+  const load = () => win.loadURL("http://127.0.0.1:5057/").catch(() => setTimeout(load, 400));
+  load();
   // Open external links (e.g. the update-notifier Download link) in the user's
   // real browser instead of a new Electron window.
   win.webContents.setWindowOpenHandler(({ url }) => {
