@@ -1,6 +1,7 @@
 """Local Flask API serving cached SQLite data + manual/scheduled sync + auth."""
 import os
 import re
+import hmac
 import threading
 import logging
 from pathlib import Path
@@ -70,6 +71,23 @@ def create_app(db_path=cfg.DB_PATH, client_factory=None,
         # the server only ever binds to 127.0.0.1 (never a public interface).
         resp.headers["Access-Control-Allow-Origin"] = "*"
         return resp
+
+    @app.before_request
+    def _gate_non_loopback():
+        # The desktop app talks to the API over loopback and needs no PIN. Any
+        # other remote address (a phone over LAN/Tailscale) must present the
+        # configured access PIN on /api/*; static assets load freely so the phone
+        # can render the PIN prompt. An empty configured PIN denies all remotes.
+        if not request.path.startswith("/api/"):
+            return None
+        if request.remote_addr in ("127.0.0.1", "::1", None):
+            return None
+        from backend import settings as st
+        pin = st.load_settings(Path(db_path).parent / "settings.json")["access_pin"]
+        supplied = request.headers.get("X-Access-Pin", "")
+        if not pin or not hmac.compare_digest(supplied, pin):
+            return jsonify({"error": "pin_required"}), 401
+        return None
 
     def _trends(days):
         rows = db.get_trends(db_path, days)
