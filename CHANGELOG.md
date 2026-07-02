@@ -3,6 +3,37 @@
 All notable changes to the Garmin Recovery Dashboard. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/). Dates are YYYY-MM-DD.
 
+## [3.4.0] — 2026-07-02
+
+### Fixed
+- **Recovery finally loads.** The score demanded a hardcoded 14 days of HRV/RHR
+  history even when the baseline window was set below 14 — making a score
+  mathematically impossible at short windows. The minimum now scales with the
+  window (7-day window → 4 days, capped at 14). A **rescore pass** recomputes
+  recovery for all stored days after every sync and on settings changes, so
+  history heals immediately. The gauge shows real progress
+  ("Baseline 3/4 days") while building.
+
+### Changed
+- **All-day Strain.** Strain now combines workout load with daily-life load
+  (intensity minutes at Garmin's mod+2×vig weighting, plus steps) — so a
+  no-workout day scores from wear data instead of staying blank. Still never
+  fabricated: a day with no data stays empty.
+
+### Added
+- **Journal** (Today tab): tag each day — alcohol, late caffeine, late meal,
+  high stress, sick, travel, screens in bed, nap — plus a note. Entries
+  **prefill from your previous answers** (change only what changed) and save on
+  tap. Once ≥4 tagged and ≥4 untagged days accumulate, Insights reports each
+  tag's effect on next-day recovery ("On alcohol days, next-day recovery
+  averages 12 points lower.").
+- **Month heatmap** (Trends tab): a calendar grid colored by Recovery, Sleep,
+  or Strain with month navigation — spot patterns at a glance.
+- `/api/sync-status` reports the app's `data_dir` (support diagnostic).
+
+### Notes
+- 143 backend tests.
+
 ## [3.3.0] — 2026-07-01
 
 ### Added
@@ -219,6 +250,7 @@ Initial release.
 - No-fabrication guarantee (missing metrics → "No data"); graceful auth/rate-limit
   handling with "last synced X ago" + Retry.
 
+[3.4.0]: #340--2026-07-02
 [3.3.0]: #330--2026-07-01
 [3.2.0]: #320--2026-06-30
 [3.1.3]: #313--2026-06-23
