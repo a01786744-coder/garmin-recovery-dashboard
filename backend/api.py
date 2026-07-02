@@ -10,7 +10,8 @@ from flask import Flask, jsonify, request, Response, send_from_directory, abort
 
 import backend.config as cfg
 import backend.db as db
-from backend.sync import run_sync, sync_activity_detail
+from backend import recovery as rec
+from backend.sync import run_sync, sync_activity_detail, rescore_history
 
 log = logging.getLogger("api")
 
@@ -118,7 +119,17 @@ def create_app(db_path=cfg.DB_PATH, client_factory=None,
         metrics = db.get_primary_day(db_path)
         sync = db.get_last_sync(db_path)
         window = st.load_settings(Path(db_path).parent / "settings.json")["baseline_window_days"]
+        # Baseline progress for the Recovery gauge ("Baseline 3/4 days").
+        need = rec.min_days_for_window(window)
+        if metrics:
+            hrv_hist = db.get_history_before(db_path, "hrv_last_night", metrics["date"], window)
+            rhr_hist = db.get_history_before(db_path, "rhr", metrics["date"], window)
+            have = min(sum(v is not None for v in hrv_hist),
+                       sum(v is not None for v in rhr_hist))
+        else:
+            have = 0
         return jsonify({
+            "baseline": {"have": have, "need": need},
             "metrics": metrics,
             "activities": db.get_recent_activities(db_path, 10),
             "perf": db.get_latest_perf(db_path),
@@ -307,8 +318,15 @@ def create_app(db_path=cfg.DB_PATH, client_factory=None,
     @app.post("/api/settings")
     def post_settings_route():
         from backend import settings as st
+        spath = Path(db_path).parent / "settings.json"
+        before = st.load_settings(spath)["baseline_window_days"]
         data = request.get_json(silent=True) or {}
-        return jsonify(st.save_settings(Path(db_path).parent / "settings.json", data))
+        saved = st.save_settings(spath, data)
+        # A new baseline window changes what qualifies for a score — heal the
+        # stored history immediately instead of waiting for the next sync.
+        if saved["baseline_window_days"] != before:
+            rescore_history(db_path, saved["baseline_window_days"])
+        return jsonify(saved)
 
     # --- Export the user's own data (local download) ---
 

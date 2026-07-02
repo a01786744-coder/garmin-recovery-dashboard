@@ -219,6 +219,21 @@ def get_history_before(path, field, before_date, days):
         return [r[field] for r in reversed(rows)]
 
 
+def update_scores(path, date, recovery=..., strain=...):
+    """Update only the computed scores for an existing day (used by the rescore
+    pass). Pass a value (or None) to set a score; omit to leave it untouched."""
+    sets, args = [], []
+    if recovery is not ...:
+        sets.append("recovery_score=?"); args.append(recovery)
+    if strain is not ...:
+        sets.append("strain_score=?"); args.append(strain)
+    if not sets:
+        return
+    args.append(date)
+    with _conn(path) as c:
+        c.execute(f"UPDATE daily_metrics SET {', '.join(sets)} WHERE date=?", args)
+
+
 def get_existing_dates(path, days):
     """Set of date strings present among the most recent `days` rows. Used to
     skip days already stored during backfill."""

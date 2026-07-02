@@ -24,12 +24,20 @@ def _clamp(x, lo, hi):
     return max(lo, min(hi, x))
 
 
-def recovery_score(hrv_today, rhr_today, hrv_hist, rhr_hist):
+def min_days_for_window(window):
+    """History required before scoring: half the baseline window, at least 4
+    days, capped at BASELINE_MIN_DAYS. Keeps short windows usable (a 7-day
+    window needs 4 days, not an impossible 14) without loosening long ones."""
+    return min(BASELINE_MIN_DAYS, max(4, int(window) // 2))
+
+
+def recovery_score(hrv_today, rhr_today, hrv_hist, rhr_hist, min_days=None):
+    need = BASELINE_MIN_DAYS if min_days is None else min_days
     hrv_hist = [h for h in (hrv_hist or []) if h is not None]
     rhr_hist = [r_ for r_ in (rhr_hist or []) if r_ is not None]
     if hrv_today is None or rhr_today is None:
         return None
-    if len(hrv_hist) < BASELINE_MIN_DAYS or len(rhr_hist) < BASELINE_MIN_DAYS:
+    if len(hrv_hist) < need or len(rhr_hist) < need:
         return None
 
     hrv_mean, rhr_mean = mean(hrv_hist), mean(rhr_hist)

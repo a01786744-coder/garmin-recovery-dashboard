@@ -16,6 +16,9 @@ export default function Overview({ today, caps, onOpen, insights }) {
   const recColor = band(rec) ? BAND[band(rec)] : "#3b82f6";
   const acts = today?.activities || [];
   const show = (cat) => visible(caps, cat);
+  const b = today?.baseline;
+  const recNullText = b && b.have < b.need
+    ? `Baseline ${b.have}/${b.need} days` : "No HRV/RHR yet";
 
   return (
     <div className="space-y-4">
@@ -25,7 +28,7 @@ export default function Overview({ today, caps, onOpen, insights }) {
             value={rec}
             label="Recovery"
             color={recColor}
-            nullText="Building baseline"
+            nullText={recNullText}
             sublabel="Estimated · not a Garmin/Whoop score"
             onClick={() => onOpen("recovery")}
           />

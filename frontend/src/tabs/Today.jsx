@@ -47,16 +47,18 @@ function Banner({ kind, text }) {
   );
 }
 
-function MorningView({ m, show, onOpen }) {
+function MorningView({ m, show, onOpen, baseline }) {
   const rec = m.recovery_score;
   const recColor = band(rec) ? BAND[band(rec)] : "#3b82f6";
   const sleepTotal = (m.deep_sleep_s || 0) + (m.light_sleep_s || 0) + (m.rem_sleep_s || 0);
+  const recNullText = baseline && baseline.have < baseline.need
+    ? `Baseline ${baseline.have}/${baseline.need} days` : "No HRV/RHR yet";
   return (
     <div className="space-y-4">
       <Grid className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card className="flex items-center justify-center py-6">
           <AnimatedGauge value={rec} label="Recovery" color={recColor}
-            nullText="Building baseline" sublabel="Estimated · not a Garmin/Whoop score"
+            nullText={recNullText} sublabel="Estimated · not a Garmin/Whoop score"
             onClick={() => onOpen("recovery")} />
         </Card>
         {show("sleep") && (
@@ -200,7 +202,7 @@ export default function Today({ today, caps, onOpen, insights }) {
       <Banner kind={part} text={part === "morning" ? recap.morning : recap.afternoon} />
 
       {part === "morning"
-        ? <MorningView m={m} show={show} onOpen={onOpen} />
+        ? <MorningView m={m} show={show} onOpen={onOpen} baseline={today?.baseline} />
         : <AfternoonView m={m} acts={today?.activities} show={show} onOpen={onOpen} bbSeries={bb.data?.series} />}
     </div>
   );
