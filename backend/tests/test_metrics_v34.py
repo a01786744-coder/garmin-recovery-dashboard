@@ -93,3 +93,54 @@ def test_settings_change_rescores_history(tmp_path):
     client.post("/api/settings", json={"baseline_window_days": 8})   # need = 4
     rows = {r["date"]: r for r in db.get_trends(p, 12)}
     assert rows["2026-06-10"]["recovery_score"] is not None
+
+
+# --- all-day strain ---
+
+def test_strain_still_none_with_no_inputs_at_all():
+    assert rec.strain_score([], None) is None
+    assert rec.strain_score([], {"steps": None, "intensity_moderate": None,
+                                 "intensity_vigorous": None}) is None
+
+
+def test_strain_scores_a_no_workout_day_from_steps():
+    s = rec.strain_score([], {"steps": 12000})
+    assert isinstance(s, int) and 5 <= s <= 40
+
+
+def test_strain_zero_step_day_scores_low_not_none():
+    s = rec.strain_score([], {"steps": 0})
+    assert s == 0
+
+
+def test_strain_intensity_minutes_raise_the_score():
+    base = rec.strain_score([], {"steps": 8000})
+    more = rec.strain_score([], {"steps": 8000, "intensity_moderate": 30,
+                                 "intensity_vigorous": 20})
+    assert more > base
+
+
+def test_strain_workouts_stack_on_top_of_daily_life():
+    act = [{"date": "2026-06-22", "training_load": 91}]
+    workout_only = rec.strain_score(act, None)
+    combined = rec.strain_score(act, {"steps": 13000, "intensity_vigorous": 40})
+    assert combined > workout_only
+
+
+def test_strain_monotonic_in_steps():
+    lo = rec.strain_score([], {"steps": 3000})
+    hi = rec.strain_score([], {"steps": 18000})
+    assert hi > lo
+
+
+def test_rescore_history_fills_strain_where_steps_exist(tmp_path):
+    p = tmp_path / "dashboard.db"
+    db.init_db(p)
+    m = _blank(); m["steps"] = 11000; m["intensity_moderate"] = 25
+    db.upsert_daily(p, "2026-06-15", m, None, None)          # no strain stored
+    m2 = _blank()                                             # a data-less day
+    db.upsert_daily(p, "2026-06-16", m2, None, None)
+    rescore_history(p, window=7)
+    rows = {r["date"]: r for r in db.get_trends(p, 5)}
+    assert rows["2026-06-15"]["strain_score"] is not None
+    assert rows["2026-06-16"]["strain_score"] is None         # never fabricate

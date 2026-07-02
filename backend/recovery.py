@@ -61,13 +61,19 @@ def recovery_band(score):
     return "red"
 
 
-def strain_score(activities_for_day):
-    """Custom 0-100 strain from the day's activity training load.
+def strain_score(activities_for_day, day_metrics=None):
+    """Custom 0-100 all-day strain: workout load PLUS daily-life load, so a
+    no-workout day still scores from wear data (Whoop-style).
 
-    Sum each activity's training_load (fallback: duration_minutes * (avg_hr/100)
-    when training_load is missing), then map to 0-100 via a saturating curve
-    (1 - exp(-total/150): a daily load of ~345 maps to ~90). Returns None when
-    there are no activities with usable data.
+    Components (each counts only when its data exists — never fabricated):
+    - workouts: sum of training_load (fallback duration_minutes * avg_hr/100)
+    - intensity minutes: moderate + 2*vigorous (Garmin's own weighting)
+    - steps: 2.5 per 1000 steps
+    Total maps to 0-100 via the saturating curve 1 - exp(-total/150): a lazy
+    2k-step day ~ 3, an active 12k-step day ~ 25-35, a run day 45+. Workouts
+    also raise steps/intensity, so components overlap slightly — an accepted
+    approximation for a wellness estimate. Returns None only when NO component
+    has data for the day.
     """
     acts = activities_for_day or []
     total = 0.0
@@ -82,6 +88,14 @@ def strain_score(activities_for_day):
         if load:
             total += load
             used = True
+    m = day_metrics or {}
+    mod, vig = m.get("intensity_moderate"), m.get("intensity_vigorous")
+    if mod is not None or vig is not None:
+        total += (mod or 0) + 2.0 * (vig or 0)
+        used = True
+    if m.get("steps") is not None:
+        total += 2.5 * (m["steps"] / 1000.0)
+        used = True
     if not used:
         return None
     score = 100 * (1 - math.exp(-total / 150.0))   # saturating
