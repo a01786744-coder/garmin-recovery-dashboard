@@ -9,6 +9,7 @@ import Badge from "../components/ui/Badge.jsx";
 import { ACCENT } from "../theme.js";
 import { secsToHms, round, num, titleCase } from "../format.js";
 import { visible } from "../caps.js";
+import MonthHeatmap from "../components/MonthHeatmap.jsx";
 
 // Best-effort Garmin personal-record type labels + how to format the value.
 const PR_TYPES = {
@@ -39,6 +40,7 @@ export default function Trends({ today, trends, caps, onOpen }) {
 
   return (
     <div className="space-y-4">
+      <MonthHeatmap />
       <Grid className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {show("hrv") && (
         <Card onClick={() => onOpen("hrv")} className="cursor-pointer">

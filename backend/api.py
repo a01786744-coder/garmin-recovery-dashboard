@@ -249,7 +249,11 @@ def create_app(db_path=cfg.DB_PATH, client_factory=None,
 
     @app.get("/api/sync-status")
     def sync_status():
-        return jsonify(db.get_last_sync(db_path) or {"status": "never"})
+        # data_dir included as a support diagnostic: makes "which database is
+        # this app actually using?" answerable without forensics.
+        body = db.get_last_sync(db_path) or {"status": "never"}
+        body["data_dir"] = str(Path(db_path).parent)
+        return jsonify(body)
 
     @app.post("/api/sync")
     def manual_sync():
