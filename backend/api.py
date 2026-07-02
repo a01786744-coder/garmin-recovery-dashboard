@@ -164,6 +164,32 @@ def create_app(db_path=cfg.DB_PATH, client_factory=None,
             "sync": db.get_last_sync(db_path),
         })
 
+    @app.get("/api/journal/<date>")
+    def get_journal_route(date):
+        from backend.insights import JOURNAL_TAGS
+        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", date):
+            return jsonify({"error": "bad date"}), 400
+        saved = db.get_journal(db_path, date)
+        if saved:
+            tags = {t: bool(saved["tags"].get(t)) for t in JOURNAL_TAGS}
+            return jsonify({"date": date, "tags": tags, "note": saved["note"], "saved": True})
+        # Sticky prefill: default to the most recent saved entry's answers so
+        # the user only flips what changed. Notes never carry forward.
+        prev = db.get_journal_before(db_path, date)
+        tags = {t: bool((prev or {}).get("tags", {}).get(t)) for t in JOURNAL_TAGS}
+        return jsonify({"date": date, "tags": tags, "note": "", "saved": False})
+
+    @app.post("/api/journal/<date>")
+    def post_journal_route(date):
+        from backend.insights import JOURNAL_TAGS
+        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", date):
+            return jsonify({"error": "bad date"}), 400
+        data = request.get_json(silent=True) or {}
+        tags = {t: bool((data.get("tags") or {}).get(t)) for t in JOURNAL_TAGS}
+        note = str(data.get("note") or "")
+        db.upsert_journal(db_path, date, tags, note)
+        return jsonify({"date": date, "tags": tags, "note": note, "saved": True})
+
     @app.get("/api/insights")
     def insights():
         from backend import insights as ins
@@ -174,7 +200,8 @@ def create_app(db_path=cfg.DB_PATH, client_factory=None,
             "weekly": ins.weekly_recap(daily, acts),
             "streaks": ins.streaks(daily, acts),
             "insights": ins.auto_insights(daily),
-            "correlations": ins.correlations(daily),
+            "correlations": (ins.correlations(daily)
+                             + ins.journal_correlations(daily, db.get_journal_range(db_path, 90))),
             "recap": {
                 "morning": ins.morning_summary(primary, daily),
                 "afternoon": ins.afternoon_summary(primary, daily),

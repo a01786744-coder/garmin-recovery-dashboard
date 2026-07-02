@@ -71,6 +71,11 @@ def init_db(path):
                 date TEXT, metric TEXT, json TEXT, PRIMARY KEY (date, metric)
             )""")
         c.execute("""
+            CREATE TABLE IF NOT EXISTS journal (
+                date TEXT PRIMARY KEY, tags TEXT, note TEXT,
+                updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )""")
+        c.execute("""
             CREATE TABLE IF NOT EXISTS perf_metrics (
                 date TEXT PRIMARY KEY, vo2max REAL, vo2max_cycling REAL,
                 fitness_age REAL, race_5k REAL, race_10k REAL, race_hm REAL,
@@ -217,6 +222,43 @@ def get_history_before(path, field, before_date, days):
             f"ORDER BY date DESC LIMIT ?", (before_date, days)
         ).fetchall()
         return [r[field] for r in reversed(rows)]
+
+
+def _journal_row(row):
+    return {"date": row["date"], "tags": json.loads(row["tags"] or "{}"),
+            "note": row["note"] or ""}
+
+
+def upsert_journal(path, date, tags, note):
+    with _conn(path) as c:
+        c.execute(
+            "INSERT INTO journal(date, tags, note, updated_at) "
+            "VALUES(?, ?, ?, CURRENT_TIMESTAMP) "
+            "ON CONFLICT(date) DO UPDATE SET tags=excluded.tags, "
+            "note=excluded.note, updated_at=CURRENT_TIMESTAMP",
+            (date, json.dumps(tags or {}), note or ""))
+
+
+def get_journal(path, date):
+    with _conn(path) as c:
+        row = c.execute("SELECT * FROM journal WHERE date=?", (date,)).fetchone()
+        return _journal_row(row) if row else None
+
+
+def get_journal_before(path, date):
+    """Most recent entry strictly before `date` — the sticky-prefill source."""
+    with _conn(path) as c:
+        row = c.execute("SELECT * FROM journal WHERE date < ? "
+                        "ORDER BY date DESC LIMIT 1", (date,)).fetchone()
+        return _journal_row(row) if row else None
+
+
+def get_journal_range(path, days):
+    """The most recent `days` entries, ascending (for correlations)."""
+    with _conn(path) as c:
+        rows = c.execute("SELECT * FROM journal ORDER BY date DESC LIMIT ?",
+                         (days,)).fetchall()
+        return [_journal_row(r) for r in reversed(rows)]
 
 
 def update_scores(path, date, recovery=..., strain=...):

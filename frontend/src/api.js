@@ -35,6 +35,9 @@ export const postMfa = (code) => jsonPost("/api/auth/mfa", { code });
 export const postLogout = () => jsonPost("/api/auth/logout", {});
 export const postSwitchAccount = () => jsonPost("/api/auth/switch-account", {});
 
+export const getJournal = (date) => j(`/api/journal/${date}`);
+export const postJournal = (date, body) => jsonPost(`/api/journal/${date}`, body);
+
 export const getSettings = () => j("/api/settings");
 export const postSettings = (partial) => jsonPost("/api/settings", partial);
 export const exportUrl = (fmt) => `${BASE}/api/export/${fmt}`;

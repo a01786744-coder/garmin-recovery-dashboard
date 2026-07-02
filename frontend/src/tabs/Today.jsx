@@ -12,6 +12,7 @@ import { round, secsToHm, titleCase } from "../format.js";
 import { getIntraday } from "../api.js";
 import { useAsync } from "../useApi.js";
 import { visible } from "../caps.js";
+import Journal from "../components/Journal.jsx";
 
 const STAGES = [
   ["deep_sleep_s", "Deep", "#1d4ed8"],
@@ -200,6 +201,10 @@ export default function Today({ today, caps, onOpen, insights }) {
       </div>
 
       <Banner kind={part} text={part === "morning" ? recap.morning : recap.afternoon} />
+
+      {/* Journal is about the real calendar day (even when metrics show the
+          most recent synced day) — entries correlate with NEXT-day recovery. */}
+      <Journal date={new Date().toISOString().slice(0, 10)} />
 
       {part === "morning"
         ? <MorningView m={m} show={show} onOpen={onOpen} baseline={today?.baseline} />

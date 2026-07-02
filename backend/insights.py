@@ -1,5 +1,6 @@
 """Insights computed from stored daily data. Pure functions; no fabrication —
 thin data yields empty/zero results, never invented numbers."""
+import datetime as _dt
 from statistics import mean, median
 
 MIN_TREND_DAYS = 4      # non-null days needed in EACH 7-day window for a % trend
@@ -8,6 +9,11 @@ MIN_PAIRS = 8           # a correlation needs this many paired days
 CORR_MIN_GAP = 3.0      # min recovery-point gap to report a correlation
 GREEN_RECOVERY = 67
 SLEEP_GOAL = 70
+
+# Fixed journal tag set (v1 — no custom tags). Order = display order.
+JOURNAL_TAGS = ["alcohol", "caffeine_late", "late_meal", "high_stress",
+                "sick", "travel", "screens_in_bed", "nap"]
+MIN_TAG_DAYS = 4        # tagged AND untagged days needed to report a tag effect
 
 _RECAP_FIELDS = ["recovery_score", "sleep_score", "strain_score",
                  "hrv_last_night", "rhr"]
@@ -136,6 +142,38 @@ def correlations(daily):
                     f"{round(abs(st['gap']))} points {'higher' if st['gap'] > 0 else 'lower'}.",
             "detail": f"{round(st['high'])} vs {round(st['low'])}",
         })
+    return out
+
+
+def journal_correlations(daily, entries):
+    """Per-tag effect on NEXT-day recovery: mean recovery after tagged days vs
+    after untagged days. Reports only tags with >= MIN_TAG_DAYS days on each
+    side and a gap >= CORR_MIN_GAP. Empty on thin data — never invented."""
+    rec_by_date = {r["date"]: r.get("recovery_score") for r in (daily or [])}
+    out = []
+    for tag in JOURNAL_TAGS:
+        tagged, untagged = [], []
+        for e in (entries or []):
+            try:
+                nxt = (_dt.date.fromisoformat(e["date"]) + _dt.timedelta(days=1)).isoformat()
+            except (KeyError, ValueError):
+                continue
+            r = rec_by_date.get(nxt)
+            if r is None:
+                continue
+            if (e.get("tags") or {}).get(tag):
+                tagged.append(r)
+            else:
+                untagged.append(r)
+        if len(tagged) >= MIN_TAG_DAYS and len(untagged) >= MIN_TAG_DAYS:
+            gap = mean(tagged) - mean(untagged)
+            if abs(gap) >= CORR_MIN_GAP:
+                label = tag.replace("_", " ")
+                out.append({
+                    "text": f"On {label} days, next-day recovery averages "
+                            f"{round(abs(gap))} points {'lower' if gap < 0 else 'higher'}.",
+                    "detail": f"{round(mean(tagged))} vs {round(mean(untagged))}",
+                })
     return out
 
 
