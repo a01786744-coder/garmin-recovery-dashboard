@@ -3,6 +3,19 @@
 All notable changes to the Garmin Recovery Dashboard. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/). Dates are YYYY-MM-DD.
 
+## [3.4.1] — 2026-07-02
+
+### Fixed
+- **Sleep "Component scores" were always empty:** the fetch read keys Garmin
+  doesn't use (`deep`/`rem`/`light`). It now reads the real
+  `deepPercentage`/`remPercentage`/`lightPercentage` (value + quality
+  qualifier); the card is reworked into **Stage quality** — percent of the
+  night per stage with Garmin's Excellent/Good/Fair/Poor rating, plus a
+  restlessness rating (which has no numeric value, so none is invented).
+- **"Record 16" and friends:** personal-record types 9 (total ascent),
+  14 (most steps in a month), 15/16 (best/current step-goal streak) are now
+  labeled; unknown types are hidden instead of showing a raw "record N".
+
 ## [3.4.0] — 2026-07-02
 
 ### Fixed
@@ -250,6 +263,7 @@ Initial release.
 - No-fabrication guarantee (missing metrics → "No data"); graceful auth/rate-limit
   handling with "last synced X ago" + Retry.
 
+[3.4.1]: #341--2026-07-02
 [3.4.0]: #340--2026-07-02
 [3.3.0]: #330--2026-07-01
 [3.2.0]: #320--2026-06-30

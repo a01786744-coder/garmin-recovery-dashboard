@@ -148,9 +148,11 @@ def test_fetch_day_parses_training_and_readiness():
         "deepSleepSeconds": 5580, "lightSleepSeconds": 14160, "remSleepSeconds": 6960,
         "awakeSleepSeconds": 900, "awakeCount": 1, "avgOvernightHrv": 79,
         "sleepNeed": {"actual": 28800, "baseline": 27000},
-        "sleepScores": {"overall": {"value": 91}, "deep": {"value": 80},
-                        "rem": {"value": 70}, "light": {"value": 60},
-                        "restlessness": {"value": 90}}}}
+        "sleepScores": {"overall": {"value": 91, "qualifierKey": "GOOD"},
+                        "deepPercentage": {"value": 21, "qualifierKey": "EXCELLENT"},
+                        "remPercentage": {"value": 20, "qualifierKey": "FAIR"},
+                        "lightPercentage": {"value": 58, "qualifierKey": "EXCELLENT"},
+                        "restlessness": {"qualifierKey": "EXCELLENT"}}}}
     api.get_hrv_data.return_value = {"hrvSummary": {"lastNightAvg": 79, "status": "BALANCED"}}
     api.get_intensity_minutes_data.return_value = {"weeklyTotal": 116, "weekGoal": 150}
     api.get_respiration_data.return_value = {"avgWakingRespirationValue": 12, "avgSleepRespirationValue": 13}
@@ -172,7 +174,16 @@ def test_fetch_day_parses_training_and_readiness():
     assert metrics["training_status_label"] == "PRODUCTIVE_1"
     assert metrics["load_aerobic_high"] == 150.7
     assert metrics["tr_sleep_factor"] == 74
-    assert metrics["sleep_deep_score"] == 80
+    # Stage percentages + quality qualifiers (Garmin's real sleepScores shape:
+    # deepPercentage/remPercentage/lightPercentage; restlessness has no value).
+    assert metrics["sleep_deep_score"] == 21
+    assert metrics["sleep_rem_score"] == 20
+    assert metrics["sleep_light_score"] == 58
+    assert metrics["sleep_restlessness_score"] is None
+    assert metrics["sleep_deep_qual"] == "EXCELLENT"
+    assert metrics["sleep_rem_qual"] == "FAIR"
+    assert metrics["sleep_light_qual"] == "EXCELLENT"
+    assert metrics["sleep_restlessness_qual"] == "EXCELLENT"
     assert metrics["sleep_need_actual"] == 28800
     assert metrics["resp_sleep"] == 13
     assert metrics["intensity_weekly_total"] == 116

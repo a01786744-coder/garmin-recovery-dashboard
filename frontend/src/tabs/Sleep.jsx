@@ -21,12 +21,18 @@ const STAGES = [
   ["awake_sleep_s", "Awake", "#52525b"],
 ];
 
-const COMPONENTS = [
-  ["sleep_deep_score", "Deep", "#1d4ed8"],
-  ["sleep_rem_score", "REM", "#8b5cf6"],
-  ["sleep_light_score", "Light", "#3b82f6"],
-  ["sleep_restlessness_score", "Restless", "#2dd4bf"],
+// Stage quality: percent of sleep per stage + Garmin's quality qualifier.
+const STAGE_QUALITY = [
+  ["sleep_deep_score", "sleep_deep_qual", "Deep"],
+  ["sleep_rem_score", "sleep_rem_qual", "REM"],
+  ["sleep_light_score", "sleep_light_qual", "Light"],
 ];
+
+const QUAL_COLORS = {
+  EXCELLENT: "#22c55e", GOOD: "#38bdf8", FAIR: "#eab308", POOR: "#ef4444",
+};
+
+const qualWord = (q) => (q ? q.charAt(0) + q.slice(1).toLowerCase() : null);
 
 export default function Sleep({ today, trends, caps, onOpen }) {
   const m = today?.metrics || {};
@@ -86,13 +92,38 @@ export default function Sleep({ today, trends, caps, onOpen }) {
         </Card>
         {show("sleep_detail") && (
         <Card>
-          <SectionTitle>Component scores</SectionTitle>
-          <div className="flex justify-around">
-            {COMPONENTS.map(([k, label, color]) => (
-              <Ring key={k} value={m[k]} goal={100} color={color} size={72}
-                center={m[k] != null ? round(m[k]) : "—"} label={label} />
-            ))}
-          </div>
+          <SectionTitle sub="Share of the night per stage · Garmin quality rating">
+            Stage quality
+          </SectionTitle>
+          {STAGE_QUALITY.every(([k]) => m[k] == null) && !m.sleep_restlessness_qual ? (
+            <NoData />
+          ) : (
+            <>
+              <div className="flex justify-around">
+                {STAGE_QUALITY.map(([k, qk, label]) => (
+                  <div key={k} className="flex flex-col items-center gap-0.5">
+                    <Ring value={m[k]} goal={100} color={QUAL_COLORS[m[qk]] || "#3b82f6"}
+                      size={72} center={m[k] != null ? `${round(m[k])}%` : "—"} label={label} />
+                    {m[qk] && (
+                      <span className="text-[10px] font-medium"
+                        style={{ color: QUAL_COLORS[m[qk]] || "inherit" }}>
+                        {qualWord(m[qk])}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+              {m.sleep_restlessness_qual && (
+                <div className="mt-3 text-center text-xs text-neutral-400">
+                  Restlessness:{" "}
+                  <span className="font-medium"
+                    style={{ color: QUAL_COLORS[m.sleep_restlessness_qual] || "inherit" }}>
+                    {qualWord(m.sleep_restlessness_qual)}
+                  </span>
+                </div>
+              )}
+            </>
+          )}
         </Card>
         )}
       </Grid>

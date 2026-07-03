@@ -16,6 +16,9 @@ DAILY_FIELDS = [
     "sleep_need_actual", "sleep_need_baseline",
     "sleep_deep_score", "sleep_rem_score", "sleep_light_score",
     "sleep_restlessness_score", "awake_count",
+    # Stage-quality qualifiers (EXCELLENT/GOOD/FAIR/POOR) from sleepScores.
+    "sleep_deep_qual", "sleep_rem_qual", "sleep_light_qual",
+    "sleep_restlessness_qual",
     "training_status_label", "acwr_ratio", "acute_load", "chronic_load",
     "load_aerobic_low", "load_aerobic_high", "load_anaerobic",
     "tr_sleep_factor", "tr_recovery_factor", "tr_acwr_factor",
@@ -23,7 +26,9 @@ DAILY_FIELDS = [
 ]
 
 # Daily fields stored as TEXT rather than REAL.
-TEXT_FIELDS = ("hrv_status", "training_status_label")
+TEXT_FIELDS = ("hrv_status", "training_status_label",
+               "sleep_deep_qual", "sleep_rem_qual", "sleep_light_qual",
+               "sleep_restlessness_qual")
 
 
 def _conn(path):

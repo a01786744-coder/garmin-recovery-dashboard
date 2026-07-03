@@ -11,12 +11,17 @@ import { secsToHms, round, num, titleCase } from "../format.js";
 import { visible } from "../caps.js";
 import MonthHeatmap from "../components/MonthHeatmap.jsx";
 
-// Best-effort Garmin personal-record type labels + how to format the value.
+// Garmin personal-record type labels + how to format the value. Types not in
+// this map are hidden rather than shown as a raw "record N".
 const PR_TYPES = {
   1: ["1 km", "time"], 2: ["1 mile", "time"], 3: ["5 km", "time"],
   4: ["10 km", "time"], 5: ["Half marathon", "time"], 6: ["Marathon", "time"],
   7: ["Longest run", "dist"], 8: ["Longest ride", "dist"],
+  9: ["Total ascent (ride)", "dist"],
   12: ["Most steps (day)", "steps"], 13: ["Most steps (week)", "steps"],
+  14: ["Most steps (month)", "steps"],
+  15: ["Step-goal streak (best)", "days"],
+  16: ["Step-goal streak (current)", "days"],
 };
 function prLabel(t) { return (PR_TYPES[t] || [titleCase(`record ${t}`)])[0]; }
 function prValue(t, v) {
@@ -25,6 +30,7 @@ function prValue(t, v) {
   if (kind === "time") return secsToHms(v);
   if (kind === "dist") return v >= 1000 ? `${(v / 1000).toFixed(2)} km` : `${round(v)} m`;
   if (kind === "steps") return Math.round(v).toLocaleString();
+  if (kind === "days") return `${round(v)} ${v === 1 ? "day" : "days"}`;
   return num(v, 1);
 }
 
@@ -93,11 +99,11 @@ export default function Trends({ today, trends, caps, onOpen }) {
         {show("personal_records") && (
         <Card>
           <SectionTitle sub="All-time bests">Personal records</SectionTitle>
-          {records.length === 0 ? (
+          {records.filter((r) => PR_TYPES[r.type_id]).length === 0 ? (
             <NoData />
           ) : (
             <ul className="divide-y divide-line/5 max-h-[260px] overflow-y-auto">
-              {records.map((r) => (
+              {records.filter((r) => PR_TYPES[r.type_id]).map((r) => (
                 <li key={r.id} className="flex items-center justify-between py-2 text-sm">
                   <div>
                     <div className="text-neutral-200">{prLabel(r.type_id)}</div>
