@@ -133,6 +133,41 @@ def test_strain_monotonic_in_steps():
     assert hi > lo
 
 
+def test_manual_sync_respects_baseline_window_setting(tmp_path):
+    """POST /api/sync must use the user's baseline_window_days — not the 30-day
+    default. Regression: the default window demanded 14 baseline days, so a
+    manual sync rescored (and wiped) scores computed under a short window."""
+    import datetime as dt
+    import json
+    from backend.config import BASELINE_FETCH_VERSION
+    p = tmp_path / "dashboard.db"
+    db.init_db(p)
+    st.save_settings(tmp_path / "settings.json", {"baseline_window_days": 8})
+    (tmp_path / "capabilities.json").write_text(
+        json.dumps({"baseline_fetch_version": BASELINE_FETCH_VERSION}))
+    today = dt.date.today()
+    for i in range(6, 0, -1):   # 6 days of history (enough for window 8, not 30)
+        m = _blank(); m["hrv_last_night"] = 60 + i % 3; m["rhr"] = 45
+        db.upsert_daily(p, (today - dt.timedelta(days=i)).isoformat(), m, None, None)
+
+    client = MagicMock()
+    client.last_fetch_had_errors = False
+    m = _blank(); m["hrv_last_night"] = 61; m["rhr"] = 44
+    client.fetch_day.return_value = (m, {})
+    client.fetch_baseline.return_value = {}       # older days: Garmin has nothing
+    client.fetch_activities.return_value = []
+    client.fetch_performance.return_value = {}
+    client.fetch_intraday.return_value = {}
+    client.fetch_personal_records.return_value = []
+    client.fetch_device_name.return_value = None
+
+    app = create_app(p, client_factory=lambda: client, tokenstore=tmp_path / "garth")
+    c = app.test_client()
+    assert c.post("/api/sync").get_json()["status"] == "ok"
+    row = db.get_daily(p, today.isoformat())
+    assert row["recovery_score"] is not None   # 8-day window needs only 4 days
+
+
 def test_rescore_history_fills_strain_where_steps_exist(tmp_path):
     p = tmp_path / "dashboard.db"
     db.init_db(p)

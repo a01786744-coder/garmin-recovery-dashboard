@@ -3,6 +3,15 @@
 All notable changes to the Garmin Recovery Dashboard. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/). Dates are YYYY-MM-DD.
 
+## [3.4.2] — 2026-07-03
+
+### Fixed
+- **Manual sync wiped recovery scores** when the baseline window was set below
+  30 days: the Retry/manual sync used the default 30-day window (needing 14
+  baseline days) and its rescore pass overwrote scores computed under the
+  user's shorter window. Manual sync now uses the configured window, same as
+  the scheduled sync.
+
 ## [3.4.1] — 2026-07-02
 
 ### Fixed
@@ -263,6 +272,7 @@ Initial release.
 - No-fabrication guarantee (missing metrics → "No data"); graceful auth/rate-limit
   handling with "last synced X ago" + Retry.
 
+[3.4.2]: #342--2026-07-03
 [3.4.1]: #341--2026-07-02
 [3.4.0]: #340--2026-07-02
 [3.3.0]: #330--2026-07-01

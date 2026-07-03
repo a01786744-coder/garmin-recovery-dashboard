@@ -265,7 +265,11 @@ def create_app(db_path=cfg.DB_PATH, client_factory=None,
         except Exception as e:
             db.write_sync_log(db_path, "error", type(e).__name__, {})
             return jsonify({"status": "error", "message": type(e).__name__}), 200
-        return jsonify(run_sync(client, db_path))
+        # Same window as the scheduled loop — a manual sync must not rescore
+        # history under the default window and wipe short-window scores.
+        from backend import settings as st
+        window = st.load_settings(Path(db_path).parent / "settings.json")["baseline_window_days"]
+        return jsonify(run_sync(client, db_path, backfill_days=window))
 
     # --- Auth: in-app login / MFA / logout (no file editing by the user) ---
 
