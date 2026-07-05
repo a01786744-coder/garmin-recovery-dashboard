@@ -3,6 +3,43 @@
 All notable changes to the Garmin Recovery Dashboard. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/). Dates are YYYY-MM-DD.
 
+## [3.5.0] — 2026-07-04
+
+### Added
+- **Background/tray mode.** Closing the window keeps the app (and your phone
+  dashboard) running in the tray / menu bar — Open/Quit from the tray icon. A
+  **Start at login (minimized)** setting launches it hidden at boot. Launching
+  the app while it's already running focuses the existing window.
+- **"Why this score."** The Recovery panel shows today's HRV and resting HR
+  against your baseline (with direction chips and the 70/30 weighting); the
+  Strain panel splits the day into workout vs daily-life load.
+- **Strain history.** The backfill now captures steps/intensity for past days
+  (from data it already downloaded — no extra Garmin calls); a one-time
+  re-backfill fills the strain trend and heatmap.
+- **Journal everywhere.** The journal appears on the Overview for whichever
+  day you're viewing — past days editable via the day browser. Tags with a
+  discovered effect show a ▲/▼ badge, and correlations now also test each tag
+  against next-night sleep.
+- **Your week in review** on the Today tab every Monday: last week vs the week
+  before, best/toughest day, and how many patterns the journal has found.
+- **Reliability:** stale-data banner when nothing has synced for >2 days; a
+  "session expired — sign in again" prompt after repeated auth failures
+  (instead of failing silently); the day browser now updates as new days
+  arrive (was dead on fresh installs until relaunch).
+
+### Changed
+- **Strain tuning:** daily-life load (steps + intensity) counts at half on
+  workout days, since workouts already include their own steps — run days now
+  land ~55-70 instead of 80+.
+
+### Fixed
+- "Today" was computed in UTC, so every evening the app thought tomorrow had
+  started (false "not synced yet" banner; journal entries written under
+  tomorrow's date). Now local time.
+
+### Notes
+- 160 backend tests.
+
 ## [3.4.2] — 2026-07-03
 
 ### Fixed
