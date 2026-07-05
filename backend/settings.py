@@ -17,6 +17,7 @@ DEFAULTS = {
     "check_updates": True,        # check GitHub for newer releases on launch
     "phone_access": False,        # bind to LAN/Tailscale so a phone can reach it
     "access_pin": "",             # required for any non-loopback API access
+    "start_at_login": False,      # Electron login item (applied by the shell)
 }
 
 
@@ -39,6 +40,7 @@ def _validate(raw):
     s["check_updates"] = bool(s["check_updates"])
     s["phone_access"] = bool(s["phone_access"])
     s["access_pin"] = str(s.get("access_pin") or "")
+    s["start_at_login"] = bool(s["start_at_login"])
     return s
 
 

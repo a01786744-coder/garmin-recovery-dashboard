@@ -42,6 +42,13 @@ def test_no_relogin_when_a_recent_sync_succeeded(tmp_path):
     assert client.get("/api/auth/status").get_json()["needs_relogin"] is False
 
 
+def test_start_at_login_setting_default_and_coercion(tmp_path):
+    import backend.settings as st
+    assert st.load_settings(tmp_path / "settings.json")["start_at_login"] is False
+    saved = st.save_settings(tmp_path / "settings.json", {"start_at_login": 1})
+    assert saved["start_at_login"] is True
+
+
 def test_no_relogin_on_fresh_install(tmp_path):
     client, _ = _client(tmp_path, with_tokens=False)
     body = client.get("/api/auth/status").get_json()

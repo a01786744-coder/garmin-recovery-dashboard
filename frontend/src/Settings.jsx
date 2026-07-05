@@ -114,6 +114,16 @@ export default function Settings({ settings, onChange, onSwitchAccount, onClose 
               Relaunch to apply, then open <span className="text-neutral-400">http://&lt;your-pc&gt;:5057</span> on
               your phone (Safari → Add to Home Screen).
             </p>
+            <label className="mt-3 flex items-center gap-2 text-sm text-neutral-300">
+              <input type="checkbox" checked={!!s.start_at_login}
+                onChange={(e) => onChange({ start_at_login: e.target.checked })}
+                className="h-4 w-4 accent-emerald-600" />
+              Start at login (minimized to tray)
+            </label>
+            <p className="mt-1 text-[11px] text-neutral-600">
+              Closing the window keeps the app running in the tray, so your phone
+              stays connected. Use the tray icon's Quit to exit fully.
+            </p>
           </div>
 
           {/* Account */}
