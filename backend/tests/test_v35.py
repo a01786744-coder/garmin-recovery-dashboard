@@ -137,3 +137,38 @@ def test_fetch_baseline_includes_activity_fields():
 def test_baseline_fetch_version_bumped_for_strain_history():
     from backend.config import BASELINE_FETCH_VERSION
     assert BASELINE_FETCH_VERSION >= 3   # triggers the one-time re-backfill
+
+
+# --- journal correlations vs next-night sleep + structured fields ---
+
+def test_journal_correlation_includes_sleep_metric_and_structured_fields():
+    from backend.insights import journal_correlations
+    # Sleep alternates low/high; recovery constant (no recovery effect).
+    daily = [{"date": f"2026-07-{i:02d}", "recovery_score": 60,
+              "sleep_score": 40 if i % 2 == 0 else 90} for i in range(1, 17)]
+    entries = [{"date": f"2026-07-{i:02d}",
+                "tags": {"screens_in_bed": (i % 2 == 1)}} for i in range(1, 16)]
+    out = journal_correlations(daily, entries)
+    hits = [c for c in out if c.get("metric") == "sleep" and c.get("tag") == "screens_in_bed"]
+    assert hits, f"no sleep correlation found in {out}"
+    assert "sleep" in hits[0]["text"].lower() and "lower" in hits[0]["text"]
+    assert hits[0]["delta"] < 0
+    # No recovery effect should be reported (recovery is flat).
+    assert not [c for c in out if c.get("metric") == "recovery"]
+
+
+# --- weekly extremes for the Monday recap ---
+
+def test_week_extremes_best_and_worst():
+    from backend.insights import week_extremes
+    daily = [{"date": f"2026-07-{i:02d}", "recovery_score": s}
+             for i, s in zip(range(1, 8), [50, 80, None, 20, 60, 70, 40])]
+    ex = week_extremes(daily)
+    assert ex["best"] == {"date": "2026-07-02", "recovery": 80}
+    assert ex["worst"] == {"date": "2026-07-04", "recovery": 20}
+
+
+def test_week_extremes_none_when_no_scores():
+    from backend.insights import week_extremes
+    assert week_extremes([{"date": "2026-07-01", "recovery_score": None}]) is None
+    assert week_extremes([]) is None

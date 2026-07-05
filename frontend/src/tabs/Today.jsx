@@ -13,6 +13,7 @@ import { getIntraday } from "../api.js";
 import { useAsync } from "../useApi.js";
 import { visible } from "../caps.js";
 import Journal from "../components/Journal.jsx";
+import WeekReview from "../components/WeekReview.jsx";
 
 const STAGES = [
   ["deep_sleep_s", "Deep", "#1d4ed8"],
@@ -204,7 +205,9 @@ export default function Today({ today, caps, onOpen, insights }) {
 
       {/* Journal is about the real calendar day (even when metrics show the
           most recent synced day) — entries correlate with NEXT-day recovery. */}
-      <Journal date={new Date().toISOString().slice(0, 10)} />
+      <Journal date={new Date().toISOString().slice(0, 10)} insights={insights} />
+
+      <WeekReview insights={insights} />
 
       {part === "morning"
         ? <MorningView m={m} show={show} onOpen={onOpen} baseline={today?.baseline} />

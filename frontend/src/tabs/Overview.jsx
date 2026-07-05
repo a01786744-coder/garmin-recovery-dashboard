@@ -9,6 +9,7 @@ import { BAND, band, ACCENT } from "../theme.js";
 import { round, secsToHm, titleCase } from "../format.js";
 import { visible } from "../caps.js";
 import InsightsSection from "../components/Insights.jsx";
+import Journal from "../components/Journal.jsx";
 
 export default function Overview({ today, caps, onOpen, insights }) {
   const m = today?.metrics || {};
@@ -55,6 +56,9 @@ export default function Overview({ today, caps, onOpen, insights }) {
       </p>
 
       <InsightsSection insights={insights} caps={caps} />
+
+      {/* Journal for the day being viewed — past days editable via the browser. */}
+      <Journal date={m.date} insights={insights} />
 
       <Grid className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {show("body_battery") && <StatTile label="Body Battery" value={m.body_battery} accent={ACCENT.body} onClick={() => onOpen("body_battery")} />}

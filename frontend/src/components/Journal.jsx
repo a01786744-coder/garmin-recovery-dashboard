@@ -16,11 +16,20 @@ const TAGS = [
 ];
 
 // Daily journal (Whoop-style). Prefills from your previous entry — flip only
-// what changed; saves on every change. Tag effects show up under Insights
-// once enough tagged/untagged days accumulate.
-export default function Journal({ date }) {
+// what changed; saves on every change. Works for any date (past days editable
+// via the day browser). Tags with a discovered effect show a ▲/▼ badge.
+export default function Journal({ date, insights }) {
   const [entry, setEntry] = useState(null);
   const [note, setNote] = useState("");
+
+  // tag -> dominant effect direction from the correlations engine.
+  const effects = {};
+  for (const c of insights?.correlations || []) {
+    if (!c.tag || c.delta == null) continue;
+    if (!(c.tag in effects) || Math.abs(c.delta) > Math.abs(effects[c.tag])) {
+      effects[c.tag] = c.delta;
+    }
+  }
 
   useEffect(() => {
     if (!date) return;
@@ -38,12 +47,13 @@ export default function Journal({ date }) {
   };
   const toggle = (k) => save({ ...entry.tags, [k]: !entry.tags[k] }, note);
 
+  const isToday = date === new Date().toISOString().slice(0, 10);
   return (
     <Card>
       <SectionTitle sub={entry.saved
         ? "Saved — tap to change"
         : "Prefilled from your last entry — tap what changed"}>
-        Journal
+        {isToday ? "Journal" : `Journal — ${date}`}
       </SectionTitle>
       <div className="flex flex-wrap gap-1.5">
         {TAGS.map(([k, label]) => (
@@ -53,6 +63,11 @@ export default function Journal({ date }) {
                 ? "border-emerald-500/50 bg-emerald-500/15 text-emerald-300"
                 : "border-line/10 bg-neutral-900/60 text-neutral-400 hover:text-neutral-200")}>
             {label}
+            {effects[k] != null && (
+              <span className={effects[k] < 0 ? "ml-1 text-red-400" : "ml-1 text-emerald-400"}>
+                {effects[k] < 0 ? "▼" : "▲"}
+              </span>
+            )}
           </button>
         ))}
       </div>

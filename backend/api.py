@@ -214,6 +214,7 @@ def create_app(db_path=cfg.DB_PATH, client_factory=None,
                 "morning": ins.morning_summary(primary, daily),
                 "afternoon": ins.afternoon_summary(primary, daily),
             },
+            "week_extremes": ins.week_extremes(daily),
         })
 
     @app.get("/api/trends")

@@ -145,36 +145,62 @@ def correlations(daily):
     return out
 
 
+# Journal tags are tested against the day AFTER the entry (both metrics are
+# filed under the wake date): what you did on day D shows up in D+1's row.
+_JOURNAL_METRICS = [
+    ("recovery", "recovery_score", "next-day recovery"),
+    ("sleep", "sleep_score", "next-night sleep"),
+]
+
+
 def journal_correlations(daily, entries):
-    """Per-tag effect on NEXT-day recovery: mean recovery after tagged days vs
-    after untagged days. Reports only tags with >= MIN_TAG_DAYS days on each
-    side and a gap >= CORR_MIN_GAP. Empty on thin data — never invented."""
-    rec_by_date = {r["date"]: r.get("recovery_score") for r in (daily or [])}
+    """Per-tag effect on next-day recovery AND next-night sleep: mean metric
+    after tagged days vs after untagged days. Reports only tags with >=
+    MIN_TAG_DAYS days on each side and a gap >= CORR_MIN_GAP. Items carry
+    structured tag/metric/delta fields for the UI. Empty on thin data."""
     out = []
-    for tag in JOURNAL_TAGS:
-        tagged, untagged = [], []
-        for e in (entries or []):
-            try:
-                nxt = (_dt.date.fromisoformat(e["date"]) + _dt.timedelta(days=1)).isoformat()
-            except (KeyError, ValueError):
-                continue
-            r = rec_by_date.get(nxt)
-            if r is None:
-                continue
-            if (e.get("tags") or {}).get(tag):
-                tagged.append(r)
-            else:
-                untagged.append(r)
-        if len(tagged) >= MIN_TAG_DAYS and len(untagged) >= MIN_TAG_DAYS:
-            gap = mean(tagged) - mean(untagged)
-            if abs(gap) >= CORR_MIN_GAP:
-                label = tag.replace("_", " ")
-                out.append({
-                    "text": f"On {label} days, next-day recovery averages "
-                            f"{round(abs(gap))} points {'lower' if gap < 0 else 'higher'}.",
-                    "detail": f"{round(mean(tagged))} vs {round(mean(untagged))}",
-                })
+    for metric_key, field, phrase in _JOURNAL_METRICS:
+        by_date = {r["date"]: r.get(field) for r in (daily or [])}
+        for tag in JOURNAL_TAGS:
+            tagged, untagged = [], []
+            for e in (entries or []):
+                try:
+                    nxt = (_dt.date.fromisoformat(e["date"]) + _dt.timedelta(days=1)).isoformat()
+                except (KeyError, ValueError):
+                    continue
+                v = by_date.get(nxt)
+                if v is None:
+                    continue
+                if (e.get("tags") or {}).get(tag):
+                    tagged.append(v)
+                else:
+                    untagged.append(v)
+            if len(tagged) >= MIN_TAG_DAYS and len(untagged) >= MIN_TAG_DAYS:
+                gap = mean(tagged) - mean(untagged)
+                if abs(gap) >= CORR_MIN_GAP:
+                    label = tag.replace("_", " ")
+                    out.append({
+                        "tag": tag,
+                        "metric": metric_key,
+                        "delta": round(gap, 1),
+                        "text": f"On {label} days, {phrase} averages "
+                                f"{round(abs(gap))} points {'lower' if gap < 0 else 'higher'}.",
+                        "detail": f"{round(mean(tagged))} vs {round(mean(untagged))}",
+                    })
     return out
+
+
+def week_extremes(daily):
+    """Best and worst recovery day of the last 7 rows; None when nothing is
+    scored (never invented)."""
+    scored = [(r["date"], r["recovery_score"]) for r in (daily or [])[-7:]
+              if r.get("recovery_score") is not None]
+    if not scored:
+        return None
+    best = max(scored, key=lambda p: p[1])
+    worst = min(scored, key=lambda p: p[1])
+    return {"best": {"date": best[0], "recovery": best[1]},
+            "worst": {"date": worst[0], "recovery": worst[1]}}
 
 
 # --- Today-tab recap summaries (plain-language; empty on thin data) ---
