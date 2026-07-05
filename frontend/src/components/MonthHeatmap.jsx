@@ -4,6 +4,7 @@ import SectionTitle from "./ui/SectionTitle.jsx";
 import { getTrends } from "../api.js";
 import { useAsync } from "../useApi.js";
 import { BAND, band } from "../theme.js";
+import { localToday } from "../format.js";
 
 const METRICS = [
   ["recovery_score", "Recovery"],
@@ -39,7 +40,7 @@ export default function MonthHeatmap() {
     && month.getMonth() === now.getMonth();
   const daysInMonth = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
   const lead = (month.getDay() + 6) % 7;   // Monday-first offset
-  const todayStr = now.toISOString().slice(0, 10);
+  const todayStr = localToday();
 
   const cells = [];
   for (let i = 0; i < lead; i++) cells.push(null);

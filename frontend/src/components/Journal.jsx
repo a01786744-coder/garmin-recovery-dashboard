@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import Card from "./ui/Card.jsx";
 import SectionTitle from "./ui/SectionTitle.jsx";
 import { getJournal, postJournal } from "../api.js";
+import { localToday } from "../format.js";
 
 // Display labels for the fixed backend tag set (insights.JOURNAL_TAGS).
 const TAGS = [
@@ -47,7 +48,7 @@ export default function Journal({ date, insights }) {
   };
   const toggle = (k) => save({ ...entry.tags, [k]: !entry.tags[k] }, note);
 
-  const isToday = date === new Date().toISOString().slice(0, 10);
+  const isToday = date === localToday();
   return (
     <Card>
       <SectionTitle sub={entry.saved

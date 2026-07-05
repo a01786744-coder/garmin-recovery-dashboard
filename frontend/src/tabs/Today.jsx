@@ -8,7 +8,7 @@ import ZoneBar from "../components/ui/ZoneBar.jsx";
 import SectionTitle from "../components/ui/SectionTitle.jsx";
 import NoData from "../components/ui/NoData.jsx";
 import { BAND, band, ACCENT } from "../theme.js";
-import { round, secsToHm, titleCase } from "../format.js";
+import { round, secsToHm, titleCase, localToday } from "../format.js";
 import { getIntraday } from "../api.js";
 import { useAsync } from "../useApi.js";
 import { visible } from "../caps.js";
@@ -205,7 +205,7 @@ export default function Today({ today, caps, onOpen, insights }) {
 
       {/* Journal is about the real calendar day (even when metrics show the
           most recent synced day) — entries correlate with NEXT-day recovery. */}
-      <Journal date={new Date().toISOString().slice(0, 10)} insights={insights} />
+      <Journal date={localToday()} insights={insights} />
 
       <WeekReview insights={insights} />
 

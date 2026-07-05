@@ -72,6 +72,13 @@ export function gmtToLocalClock(s) {
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
+// Local calendar date as YYYY-MM-DD. (toISOString() is UTC and rolls over to
+// "tomorrow" during the evening in timezones west of UTC.)
+export function localToday() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 export function titleCase(s) {
   if (!s) return "";
   return s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());

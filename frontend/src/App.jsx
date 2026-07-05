@@ -8,6 +8,7 @@ import {
 // Tabs whose content is a single day's metrics (so the day browser applies).
 // "today" is excluded: it's the live time-aware recap, always the current day.
 const DAY_TABS = new Set(["overview", "sleep", "training"]);
+import { localToday } from "./format.js";
 import DetailPanel from "./detail/DetailPanel.jsx";
 import { tabVisible } from "./caps.js";
 import SyncHeader from "./components/SyncHeader.jsx";
@@ -229,7 +230,7 @@ export default function App() {
   const Active = VIEWS[activeKey];
   // When today's data hasn't synced yet we show the most recent day with data.
   const dataDate = today?.metrics?.date;
-  const realToday = new Date().toISOString().slice(0, 10);
+  const realToday = localToday();
   const staleDay = dataDate && dataDate !== realToday;
   // Stale-data warning: no new data for >2 days. Dismissal lasts for the rest
   // of the current day (reappears daily while the problem persists).
