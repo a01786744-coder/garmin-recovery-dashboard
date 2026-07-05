@@ -140,6 +140,13 @@ class GarminClient:
             "light_sleep_s": sdto.get("lightSleepSeconds"),
             "rem_sleep_s": sdto.get("remSleepSeconds"),
             "awake_sleep_s": sdto.get("awakeSleepSeconds"),
+            # Activity fields for historical strain — parsed from the user
+            # summary this function ALREADY fetches (no extra API calls).
+            "steps": summary.get("totalSteps"),
+            "intensity_moderate": summary.get("moderateIntensityMinutes"),
+            "intensity_vigorous": summary.get("vigorousIntensityMinutes"),
+            "active_calories": summary.get("activeKilocalories"),
+            "distance_m": summary.get("totalDistanceMeters"),
         }
 
     def fetch_device_name(self):

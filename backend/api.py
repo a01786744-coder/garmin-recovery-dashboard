@@ -126,10 +126,18 @@ def create_app(db_path=cfg.DB_PATH, client_factory=None,
             rhr_hist = db.get_history_before(db_path, "rhr", metrics["date"], window)
             have = min(sum(v is not None for v in hrv_hist),
                        sum(v is not None for v in rhr_hist))
+            # "Why this score" payloads for the detail panels.
+            recovery_explain = rec.recovery_explanation(
+                metrics.get("hrv_last_night"), metrics.get("rhr"),
+                hrv_hist, rhr_hist, min_days=need)
+            strain_explain = rec.strain_breakdown(
+                db.get_activities_on(db_path, metrics["date"]), metrics)
         else:
-            have = 0
+            have, recovery_explain, strain_explain = 0, None, None
         return jsonify({
             "baseline": {"have": have, "need": need},
+            "recovery_explain": recovery_explain,
+            "strain_explain": strain_explain,
             "metrics": metrics,
             "activities": db.get_recent_activities(db_path, 10),
             "perf": db.get_latest_perf(db_path),

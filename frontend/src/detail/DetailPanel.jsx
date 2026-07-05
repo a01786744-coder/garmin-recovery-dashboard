@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { METRICS, metricSeries } from "./registry.js";
 import EvolutionChart from "./EvolutionChart.jsx";
 import StatRow from "./StatRow.jsx";
+import { RecoveryWhy, StrainWhy } from "./WhyScore.jsx";
 import MiniArea from "../components/ui/MiniArea.jsx";
 import NoData from "../components/ui/NoData.jsx";
 import { getIntraday } from "../api.js";
@@ -48,6 +49,9 @@ export default function DetailPanel({ metricKey, trends90, today, insights, onCl
             <div className="my-5">
               <StatRow series={metricSeries(trends90, metricKey)} unit={m.unit} />
             </div>
+
+            {metricKey === "recovery" && <RecoveryWhy explain={today?.recovery_explain} />}
+            {metricKey === "strain" && <StrainWhy explain={today?.strain_explain} />}
 
             {m.intraday && (
               <div className="mb-5">

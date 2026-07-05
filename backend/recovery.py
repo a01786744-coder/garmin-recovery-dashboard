@@ -31,7 +31,10 @@ def min_days_for_window(window):
     return min(BASELINE_MIN_DAYS, max(4, int(window) // 2))
 
 
-def recovery_score(hrv_today, rhr_today, hrv_hist, rhr_hist, min_days=None):
+def recovery_explanation(hrv_today, rhr_today, hrv_hist, rhr_hist, min_days=None):
+    """Why the score: today's HRV/RHR vs the personal baseline as z-scores
+    (positive pushes recovery UP; RHR is inverted — lower is better). Same
+    guards as recovery_score: returns None whenever the score would be None."""
     need = BASELINE_MIN_DAYS if min_days is None else min_days
     hrv_hist = [h for h in (hrv_hist or []) if h is not None]
     rhr_hist = [r_ for r_ in (rhr_hist or []) if r_ is not None]
@@ -43,10 +46,20 @@ def recovery_score(hrv_today, rhr_today, hrv_hist, rhr_hist, min_days=None):
     hrv_mean, rhr_mean = mean(hrv_hist), mean(rhr_hist)
     hrv_std = max(pstdev(hrv_hist), 0.05 * hrv_mean) if hrv_mean else max(pstdev(hrv_hist), 1.0)
     rhr_std = max(pstdev(rhr_hist), 2.0)
+    return {
+        "hrv": {"today": hrv_today, "baseline": round(hrv_mean, 1),
+                "z": round(_clamp((hrv_today - hrv_mean) / hrv_std, -3, 3), 2)},
+        "rhr": {"today": rhr_today, "baseline": round(rhr_mean, 1),
+                "z": round(_clamp(-(rhr_today - rhr_mean) / rhr_std, -3, 3), 2)},
+        "weights": {"hrv": 0.7, "rhr": 0.3},
+    }
 
-    z_hrv = _clamp((hrv_today - hrv_mean) / hrv_std, -3, 3)
-    z_rhr_inv = _clamp(-(rhr_today - rhr_mean) / rhr_std, -3, 3)
-    z = 0.7 * z_hrv + 0.3 * z_rhr_inv
+
+def recovery_score(hrv_today, rhr_today, hrv_hist, rhr_hist, min_days=None):
+    ex = recovery_explanation(hrv_today, rhr_today, hrv_hist, rhr_hist, min_days)
+    if ex is None:
+        return None
+    z = 0.7 * ex["hrv"]["z"] + 0.3 * ex["rhr"]["z"]
     score = 100 / (1 + math.exp(-(1.0 * z + 0.3)))
     return int(round(min(100, max(0, score))))
 
@@ -61,22 +74,20 @@ def recovery_band(score):
     return "red"
 
 
-def strain_score(activities_for_day, day_metrics=None):
-    """Custom 0-100 all-day strain: workout load PLUS daily-life load, so a
-    no-workout day still scores from wear data (Whoop-style).
+def strain_breakdown(activities_for_day, day_metrics=None):
+    """All-day strain, split into its components (for the detail panel):
 
-    Components (each counts only when its data exists — never fabricated):
-    - workouts: sum of training_load (fallback duration_minutes * avg_hr/100)
-    - intensity minutes: moderate + 2*vigorous (Garmin's own weighting)
-    - steps: 2.5 per 1000 steps
-    Total maps to 0-100 via the saturating curve 1 - exp(-total/150): a lazy
-    2k-step day ~ 3, an active 12k-step day ~ 25-35, a run day 45+. Workouts
-    also raise steps/intensity, so components overlap slightly — an accepted
-    approximation for a wellness estimate. Returns None only when NO component
-    has data for the day.
+    - workout: sum of training_load (fallback duration_minutes * avg_hr/100)
+    - daily:   intensity minutes (moderate + 2*vigorous, Garmin's weighting)
+               plus steps (2.5 per 1000) — counted at **50% on workout days**,
+               since workouts already contain their own steps/intensity
+               (overlap damping).
+    total maps to 0-100 via 1 - exp(-total/150): rest day ~3, active 12k-step
+    day ~25-35, run day ~55-70. Each component counts only when its data
+    exists; returns None only when NO component has data (never fabricated).
     """
     acts = activities_for_day or []
-    total = 0.0
+    workout = 0.0
     used = False
     for a in acts:
         load = a.get("training_load")
@@ -86,17 +97,27 @@ def strain_score(activities_for_day, day_metrics=None):
             if dur and hr:
                 load = (dur / 60.0) * (hr / 100.0)
         if load:
-            total += load
+            workout += load
             used = True
     m = day_metrics or {}
+    daily_raw = 0.0
     mod, vig = m.get("intensity_moderate"), m.get("intensity_vigorous")
     if mod is not None or vig is not None:
-        total += (mod or 0) + 2.0 * (vig or 0)
+        daily_raw += (mod or 0) + 2.0 * (vig or 0)
         used = True
     if m.get("steps") is not None:
-        total += 2.5 * (m["steps"] / 1000.0)
+        daily_raw += 2.5 * (m["steps"] / 1000.0)
         used = True
     if not used:
         return None
+    daily = daily_raw * (0.5 if workout > 0 else 1.0)
+    total = workout + daily
     score = 100 * (1 - math.exp(-total / 150.0))   # saturating
-    return int(round(min(100, max(0, score))))
+    return {"workout": round(workout, 1), "daily": round(daily, 1),
+            "total": round(total, 1),
+            "score": int(round(min(100, max(0, score))))}
+
+
+def strain_score(activities_for_day, day_metrics=None):
+    b = strain_breakdown(activities_for_day, day_metrics)
+    return None if b is None else b["score"]
