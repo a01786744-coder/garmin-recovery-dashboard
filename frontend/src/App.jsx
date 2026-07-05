@@ -55,11 +55,20 @@ export default function App() {
   const [pinRequired, setPinRequired] = useState(false);   // 401 from a phone
   const [detailKey, setDetailKey] = useState(null);
 
+  const [loginNotice, setLoginNotice] = useState(null);
+
   // Resolve auth status, retrying while the backend is still starting up.
   const checkAuth = useCallback(async (attempt = 0) => {
     try {
-      const { authenticated } = await getAuthStatus();
-      setAuthed(authenticated);
+      const { authenticated, needs_relogin } = await getAuthStatus();
+      if (needs_relogin) {
+        // The stored token is dead (repeated auth failures) — ask for a fresh
+        // sign-in instead of failing silently in the background.
+        setLoginNotice("Your Garmin session expired — please sign in again.");
+        setAuthed(false);
+      } else {
+        setAuthed(authenticated);
+      }
       setAuthError(false);
     } catch (e) {
       // The bundled backend can take a few seconds to cold-start; retry for
@@ -71,19 +80,29 @@ export default function App() {
 
   const load = useCallback(async () => {
     try {
-      const [t, tr, cp, ins] = await Promise.all([getToday(), getTrends(14), getCapabilities(), getInsights()]);
+      const [t, tr, cp, ins, dy] = await Promise.all([
+        getToday(), getTrends(14), getCapabilities(), getInsights(), getDays(),
+      ]);
       setToday(t);
       setTrends(tr);
       setCaps(cp);
       setInsights(ins);
+      // Refresh the browsable-day list every cycle: on a fresh install the
+      // backfill lands AFTER login, and a once-only fetch left Prev/Next dead.
+      setDays(dy.dates || []);
       // A sync may report an auth error transiently (e.g. a token refresh
       // racing a Garmin rate-limit). Do NOT loop the user back to login on that
       // alone — only show login if there is genuinely no saved token. This keeps
       // a hiccup as "sync failed · Retry" on the dashboard instead of a loop.
       if (t?.sync?.status === "error" && t.sync.message === "GarminAuthError") {
         try {
-          const { authenticated } = await getAuthStatus();
-          if (!authenticated) setAuthed(false);
+          const { authenticated, needs_relogin } = await getAuthStatus();
+          if (needs_relogin) {
+            setLoginNotice("Your Garmin session expired — please sign in again.");
+            setAuthed(false);
+          } else if (!authenticated) {
+            setAuthed(false);
+          }
         } catch (e) {
           /* backend unreachable — keep current view, don't bounce */
         }
@@ -115,7 +134,6 @@ export default function App() {
     if (authed !== true) return;
     load();
     getSettings().then(setSettings).catch(() => {});
-    getDays().then((d) => setDays(d.dates || [])).catch(() => {});
     const id = setInterval(load, 60000);
     return () => clearInterval(id);
   }, [authed, load]);
@@ -179,7 +197,7 @@ export default function App() {
   };
 
   if (pinRequired) return <PinGate />;
-  if (authed === false) return <Login onSuccess={onLoggedIn} />;
+  if (authed === false) return <Login notice={loginNotice} onSuccess={onLoggedIn} />;
   if (authed === null) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 p-6 text-center">
@@ -213,6 +231,16 @@ export default function App() {
   const dataDate = today?.metrics?.date;
   const realToday = new Date().toISOString().slice(0, 10);
   const staleDay = dataDate && dataDate !== realToday;
+  // Stale-data warning: no new data for >2 days. Dismissal lasts for the rest
+  // of the current day (reappears daily while the problem persists).
+  const staleDays = dataDate
+    ? Math.floor((new Date(realToday) - new Date(dataDate)) / 86400000) : 0;
+  const showStale = dataDate && staleDays > 2
+    && localStorage.getItem("staleDismissed") !== realToday;
+  const dismissStale = () => {
+    localStorage.setItem("staleDismissed", realToday);
+    setToday((t) => ({ ...t }));   // re-render to hide the banner
+  };
 
   // Day browser: which day's payload the day-views render. selectedDate=null
   // means the live/latest day; a set date swaps in that past day's metrics.
@@ -276,6 +304,17 @@ export default function App() {
         )}
 
         <UpdateBanner enabled={settings?.check_updates !== false} />
+
+        {showStale && (
+          <div className="mb-4 flex items-center gap-3 rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-2.5 text-sm text-amber-200">
+            <span>
+              No new data since <b>{dataDate}</b> ({staleDays} days) — check that your
+              watch is syncing to Garmin Connect, or try a manual sync.
+            </span>
+            <button onClick={dismissStale} aria-label="Dismiss"
+              className="ml-auto shrink-0 text-amber-300/70 hover:text-amber-100">✕</button>
+          </div>
+        )}
 
         <nav className="mb-6 flex gap-1 overflow-x-auto rounded-xl border border-line/5 bg-neutral-900/50 p-1">
           {shownTabs.map(([key, label]) => (

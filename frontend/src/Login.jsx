@@ -11,7 +11,7 @@ const ERRORS = {
   network: "Couldn't reach the local service. Is the app still starting?",
 };
 
-export default function Login({ onSuccess }) {
+export default function Login({ onSuccess, notice }) {
   const [stage, setStage] = useState("login"); // "login" | "mfa"
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -62,6 +62,11 @@ export default function Login({ onSuccess }) {
         className="w-full max-w-sm rounded-2xl border border-line/5 bg-neutral-900/70 p-6 shadow-xl shadow-black/30 backdrop-blur"
       >
         <h1 className="text-lg font-bold text-neutral-50">Recovery Dashboard</h1>
+        {notice && (
+          <p className="mt-2 rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+            {notice}
+          </p>
+        )}
         <p className="mb-5 text-xs text-neutral-500">
           Sign in with your Garmin Connect account. Your password is sent once to
           Garmin and never stored — only a login token is kept on this device.

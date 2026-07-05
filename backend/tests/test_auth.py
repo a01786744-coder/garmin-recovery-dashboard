@@ -33,7 +33,8 @@ def _write_token(ts):
 
 def test_status_false_when_no_tokens(tmp_path):
     client, ts = _app(tmp_path, lambda c, t: None)
-    assert client.get("/api/auth/status").get_json() == {"authenticated": False}
+    assert client.get("/api/auth/status").get_json() == {
+        "authenticated": False, "needs_relogin": False}
 
 
 def test_login_success_then_status_true(tmp_path):

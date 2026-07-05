@@ -322,6 +322,16 @@ def write_sync_log(path, status, message, availability):
             (status, message, json.dumps(availability or {})))
 
 
+def last_sync_statuses(path, n):
+    """The most recent n sync outcomes as (status, message), newest first.
+    Used to detect a persistently broken session (repeated auth failures)."""
+    with _conn(path) as c:
+        rows = c.execute(
+            "SELECT status, message FROM sync_log ORDER BY id DESC LIMIT ?", (n,)
+        ).fetchall()
+        return [(r["status"], r["message"]) for r in rows]
+
+
 def get_last_sync(path):
     with _conn(path) as c:
         row = c.execute(

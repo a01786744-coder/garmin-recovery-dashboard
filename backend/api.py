@@ -275,7 +275,13 @@ def create_app(db_path=cfg.DB_PATH, client_factory=None,
 
     @app.get("/api/auth/status")
     def auth_status():
-        return jsonify({"authenticated": _has_tokens(tokenstore)})
+        # needs_relogin: the stored token is dead (3 straight auth failures) —
+        # the UI should prompt a fresh sign-in instead of failing silently.
+        recent = db.last_sync_statuses(db_path, 3)
+        needs_relogin = (len(recent) == 3 and
+                         all(s == "error" and m == "GarminAuthError" for s, m in recent))
+        return jsonify({"authenticated": _has_tokens(tokenstore),
+                        "needs_relogin": needs_relogin})
 
     @app.post("/api/auth/login")
     def auth_login():
