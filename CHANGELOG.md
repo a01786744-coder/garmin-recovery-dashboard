@@ -3,6 +3,13 @@
 All notable changes to the Garmin Recovery Dashboard. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/). Dates are YYYY-MM-DD.
 
+## [3.6.0] — 2026-07-08
+
+### Added
+- **Compare chart** (Trends): Whoop-style overlay — Recovery as bars colored
+  by zone (green/yellow/red) with **Sleep** or **Strain** as a line on the
+  same 0-100 scale, switchable, with 30d/60d/90d/6m/1y ranges.
+
 ## [3.5.1] — 2026-07-05
 
 ### Added

@@ -10,6 +10,7 @@ import { ACCENT } from "../theme.js";
 import { secsToHms, round, num, titleCase, fmtDay } from "../format.js";
 import { visible } from "../caps.js";
 import MonthHeatmap from "../components/MonthHeatmap.jsx";
+import CompareChart from "../components/CompareChart.jsx";
 
 // Garmin personal-record type labels + how to format the value. Types not in
 // this map are hidden rather than shown as a raw "record N".
@@ -46,6 +47,7 @@ export default function Trends({ today, trends, caps, onOpen }) {
 
   return (
     <div className="space-y-4">
+      <CompareChart />
       <MonthHeatmap />
       <Grid className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {show("hrv") && (
