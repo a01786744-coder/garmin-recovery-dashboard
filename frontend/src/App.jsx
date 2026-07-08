@@ -8,7 +8,7 @@ import {
 // Tabs whose content is a single day's metrics (so the day browser applies).
 // "today" is excluded: it's the live time-aware recap, always the current day.
 const DAY_TABS = new Set(["overview", "sleep", "training"]);
-import { localToday } from "./format.js";
+import { localToday, fmtDay, setDateStyle } from "./format.js";
 import DetailPanel from "./detail/DetailPanel.jsx";
 import { tabVisible } from "./caps.js";
 import SyncHeader from "./components/SyncHeader.jsx";
@@ -49,7 +49,6 @@ export default function App() {
   const [authed, setAuthed] = useState(null); // null = unknown, false = show login
   const [authError, setAuthError] = useState(false);
   const [insights, setInsights] = useState(null);
-  const [trends90, setTrends90] = useState(null);
   const [days, setDays] = useState([]);            // all dates with data (asc)
   const [selectedDate, setSelectedDate] = useState(null);  // null = live/latest
   const [dayPayload, setDayPayload] = useState(null);      // fetched past day
@@ -115,12 +114,8 @@ export default function App() {
     }
   }, []);
 
-  const openDetail = useCallback(async (key) => {
-    setDetailKey(key);
-    if (!trends90) {
-      try { setTrends90(await getTrends(90)); } catch (e) { /* panel still shows today + insights */ }
-    }
-  }, [trends90]);
+  // The detail panel fetches its own range-selectable history.
+  const openDetail = useCallback((key) => setDetailKey(key), []);
 
   useEffect(() => { checkAuth(); }, [checkAuth]);
 
@@ -155,6 +150,9 @@ export default function App() {
     document.documentElement.dataset.theme = settings.theme;
     localStorage.setItem("theme", settings.theme);
   }, [settings?.theme]);
+
+  // Chart/date display style ("Jul 4" vs "07-04") follows the setting.
+  useEffect(() => { setDateStyle(settings?.date_style); }, [settings?.date_style]);
 
   const toggleTheme = () => {
     const next = theme === "light" ? "dark" : "light";
@@ -264,7 +262,7 @@ export default function App() {
             <h1 className="text-xl font-bold tracking-tight">Recovery Dashboard</h1>
             <p className="text-[11px] text-neutral-600">
               {caps?.device_name ? `Garmin ${caps.device_name}` : "Garmin"} · local &amp; private
-              {staleDay && !browsing && <span className="ml-1 text-amber-500/80">· showing {dataDate} (today not synced yet)</span>}
+              {staleDay && !browsing && <span className="ml-1 text-amber-500/80">· showing {fmtDay(dataDate)} (today not synced yet)</span>}
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -309,7 +307,7 @@ export default function App() {
         {showStale && (
           <div className="mb-4 flex items-center gap-3 rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-2.5 text-sm text-amber-200">
             <span>
-              No new data since <b>{dataDate}</b> ({staleDays} days) — check that your
+              No new data since <b>{fmtDay(dataDate)}</b> ({staleDays} days) — check that your
               watch is syncing to Garmin Connect, or try a manual sync.
             </span>
             <button onClick={dismissStale} aria-label="Dismiss"
@@ -346,7 +344,7 @@ export default function App() {
               ‹ Prev
             </button>
             <span className="min-w-[9rem] text-center text-neutral-300">
-              {viewingDate || "—"}{!selectedDate && <span className="text-neutral-600"> · latest</span>}
+              {viewingDate ? fmtDay(viewingDate) : "—"}{!selectedDate && <span className="text-neutral-600"> · latest</span>}
             </span>
             <button disabled={!canNext} onClick={() => canNext && setSelectedDate(days[idx + 1])}
               className="rounded-md px-2.5 py-1 text-neutral-400 enabled:hover:text-neutral-100 disabled:opacity-30">
@@ -393,7 +391,7 @@ export default function App() {
           Unofficial Garmin Connect client — for personal insight only, not medical advice.
         </footer>
       </div>
-      <DetailPanel metricKey={detailKey} trends90={trends90} today={today}
+      <DetailPanel metricKey={detailKey} today={today}
         insights={insights} onClose={() => setDetailKey(null)} />
     </div>
   );

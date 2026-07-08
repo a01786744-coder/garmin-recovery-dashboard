@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { METRICS, metricSeries } from "./registry.js";
 import EvolutionChart from "./EvolutionChart.jsx";
@@ -6,17 +6,26 @@ import StatRow from "./StatRow.jsx";
 import { RecoveryWhy, StrainWhy } from "./WhyScore.jsx";
 import MiniArea from "../components/ui/MiniArea.jsx";
 import NoData from "../components/ui/NoData.jsx";
-import { getIntraday } from "../api.js";
+import { getIntraday, getTrends } from "../api.js";
 import { useAsync, pairsToXY } from "../useApi.js";
 import { gmtToLocalClock } from "../format.js";
 
-export default function DetailPanel({ metricKey, trends90, today, insights, onClose }) {
+// Selectable history window for the evolution chart + stat row.
+const RANGES = [[30, "30d"], [60, "60d"], [90, "90d"], [183, "6m"], [365, "1y"]];
+
+export default function DetailPanel({ metricKey, today, insights, onClose }) {
   const m = metricKey ? METRICS[metricKey] : null;
+  const [days, setDays] = useState(90);
+
   useEffect(() => {
     const onKey = (e) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
+
+  // The panel owns its history fetch so the range is switchable.
+  const trendsR = useAsync(() => (m ? getTrends(days) : null), [metricKey, days]);
+  const series = metricSeries(trendsR.data, metricKey);
 
   const date = today?.metrics?.date;
   const intraday = useAsync(
@@ -43,11 +52,24 @@ export default function DetailPanel({ metricKey, trends90, today, insights, onCl
               <button onClick={onClose} className="text-neutral-500 hover:text-neutral-200">✕</button>
             </div>
 
-            <div className="mb-4 text-sm text-neutral-400">Up to 90-day evolution</div>
-            <EvolutionChart series={metricSeries(trends90, metricKey)} color={m.accent} />
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <div className="text-sm text-neutral-400">Evolution</div>
+              <div className="flex gap-1 rounded-lg border border-line/10 bg-neutral-900/60 p-0.5 text-xs">
+                {RANGES.map(([d, label]) => (
+                  <button key={d} onClick={() => setDays(d)}
+                    className={"rounded-md px-2.5 py-1 transition-colors " +
+                      (days === d ? "bg-line/10 text-neutral-50" : "text-neutral-400 hover:text-neutral-200")}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {trendsR.loading
+              ? <NoData label="Loading…" height={220} />
+              : <EvolutionChart series={series} color={m.accent} />}
 
             <div className="my-5">
-              <StatRow series={metricSeries(trends90, metricKey)} unit={m.unit} />
+              <StatRow series={series} unit={m.unit} />
             </div>
 
             {metricKey === "recovery" && <RecoveryWhy explain={today?.recovery_explain} />}

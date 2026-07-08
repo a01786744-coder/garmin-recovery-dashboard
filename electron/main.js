@@ -139,8 +139,29 @@ function createWindow(show) {
     if (!quitting) {
       e.preventDefault();
       win.hide();
+      notifyHiddenOnce();
     }
   });
+}
+
+// One-time (ever) heads-up that closing the window doesn't quit — without it,
+// the app "refusing to close" is genuinely confusing the first time.
+function notifyHiddenOnce() {
+  const flag = path.join(app.getPath("userData"), ".tray-notified");
+  try {
+    if (fs.existsSync(flag)) return;
+    fs.writeFileSync(flag, "1");
+    if (tray && typeof tray.displayBalloon === "function") {
+      tray.displayBalloon({
+        title: "Still running in the tray",
+        content: "Your phone dashboard stays connected. Right-click the tray " +
+                 "icon and choose Quit to exit completely.",
+        iconType: "info",
+      });
+    }
+  } catch (e) {
+    /* purely informational — never break close-to-tray over it */
+  }
 }
 
 function showWindow() {

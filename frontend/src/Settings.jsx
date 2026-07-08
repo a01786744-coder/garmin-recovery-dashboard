@@ -51,6 +51,19 @@ export default function Settings({ settings, onChange, onSwitchAccount, onClose 
             </div>
           </Row>
 
+          {/* Chart date style */}
+          <Row label="Dates" hint="how dates appear in charts">
+            <div className="flex gap-1 rounded-lg border border-line/10 bg-neutral-950/60 p-0.5">
+              {[["month", "Jul 4"], ["number", "07-04"]].map(([v, label]) => (
+                <button key={v} onClick={() => onChange({ date_style: v })}
+                  className={"rounded-md px-3 py-1 text-sm transition-colors " +
+                    (s.date_style === v ? "bg-emerald-600 text-neutral-50" : "text-neutral-400 hover:text-neutral-200")}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </Row>
+
           {/* Sync interval */}
           <Row label="Sync interval" hint="minutes (5–240)">
             <NumberInput value={s.sync_interval_minutes} min={5} max={240}

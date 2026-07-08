@@ -1,7 +1,7 @@
 import React from "react";
 import Card from "./ui/Card.jsx";
 import SectionTitle from "./ui/SectionTitle.jsx";
-import { round, DASH } from "../format.js";
+import { round, DASH, fmtDay } from "../format.js";
 
 const ROWS = [
   ["recovery_score", "Recovery", true],
@@ -43,8 +43,8 @@ export default function WeekReview({ insights }) {
         ))}
       </div>
       <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-xs text-neutral-400">
-        {ex?.best && <span>Best day: <b className="text-emerald-400">{ex.best.date}</b> (recovery {ex.best.recovery})</span>}
-        {ex?.worst && <span>Toughest: <b className="text-red-400">{ex.worst.date}</b> (recovery {ex.worst.recovery})</span>}
+        {ex?.best && <span>Best day: <b className="text-emerald-400">{fmtDay(ex.best.date)}</b> (recovery {ex.best.recovery})</span>}
+        {ex?.worst && <span>Toughest: <b className="text-red-400">{fmtDay(ex.worst.date)}</b> (recovery {ex.worst.recovery})</span>}
         <span>{found > 0 ? `${found} pattern${found > 1 ? "s" : ""} found in your journal & data` : "No journal patterns yet — keep tagging days"}</span>
       </div>
     </Card>

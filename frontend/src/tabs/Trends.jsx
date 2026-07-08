@@ -7,7 +7,7 @@ import SectionTitle from "../components/ui/SectionTitle.jsx";
 import NoData from "../components/ui/NoData.jsx";
 import Badge from "../components/ui/Badge.jsx";
 import { ACCENT } from "../theme.js";
-import { secsToHms, round, num, titleCase } from "../format.js";
+import { secsToHms, round, num, titleCase, fmtDay } from "../format.js";
 import { visible } from "../caps.js";
 import MonthHeatmap from "../components/MonthHeatmap.jsx";
 
@@ -52,14 +52,14 @@ export default function Trends({ today, trends, caps, onOpen }) {
         <Card onClick={() => onOpen("hrv")} className="cursor-pointer">
           <SectionTitle sub="14-day overnight average (ms)">HRV trend</SectionTitle>
           <MiniArea data={hrv} color={ACCENT.hrv} height={170} area={false}
-            xTickFormatter={(d) => (typeof d === "string" ? d.slice(5) : "")} />
+            xTickFormatter={(d) => (typeof d === "string" ? fmtDay(d) : "")} />
         </Card>
         )}
         {show("rhr") && (
         <Card onClick={() => onOpen("rhr")} className="cursor-pointer">
           <SectionTitle sub="14-day (bpm)">Resting HR trend</SectionTitle>
           <MiniArea data={rhr} color={ACCENT.rhr} height={170} area={false}
-            xTickFormatter={(d) => (typeof d === "string" ? d.slice(5) : "")} />
+            xTickFormatter={(d) => (typeof d === "string" ? fmtDay(d) : "")} />
         </Card>
         )}
       </Grid>

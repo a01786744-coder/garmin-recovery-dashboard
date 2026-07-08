@@ -3,6 +3,18 @@
 All notable changes to the Garmin Recovery Dashboard. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/). Dates are YYYY-MM-DD.
 
+## [3.5.1] — 2026-07-05
+
+### Added
+- **Chart range selector**: every metric detail panel can switch its evolution
+  chart and stats between **30d / 60d / 90d / 6m / 1y**.
+- **Date style setting**: chart dates show real month names ("Jul 4") by
+  default, switchable to numeric ("07-04") in Settings → Dates. Applies to all
+  chart axes/tooltips, the day browser, the stale banner, and the week review.
+- **Tray heads-up**: the first time you close the window, a one-time
+  notification explains the app keeps running in the tray (and how to quit) —
+  closing no longer looks like a refusal to close.
+
 ## [3.5.0] — 2026-07-04
 
 ### Added

@@ -18,6 +18,7 @@ DEFAULTS = {
     "phone_access": False,        # bind to LAN/Tailscale so a phone can reach it
     "access_pin": "",             # required for any non-loopback API access
     "start_at_login": False,      # Electron login item (applied by the shell)
+    "date_style": "month",        # chart dates: "month" (Jul 4) | "number" (07-04)
 }
 
 
@@ -41,6 +42,7 @@ def _validate(raw):
     s["phone_access"] = bool(s["phone_access"])
     s["access_pin"] = str(s.get("access_pin") or "")
     s["start_at_login"] = bool(s["start_at_login"])
+    s["date_style"] = s["date_style"] if s["date_style"] in ("month", "number") else "month"
     return s
 
 

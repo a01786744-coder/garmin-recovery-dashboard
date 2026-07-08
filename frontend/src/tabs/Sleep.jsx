@@ -9,7 +9,7 @@ import MiniArea from "../components/ui/MiniArea.jsx";
 import SectionTitle from "../components/ui/SectionTitle.jsx";
 import NoData from "../components/ui/NoData.jsx";
 import { ACCENT } from "../theme.js";
-import { minutesToHm, secsToHm, round, gmtToLocalClock } from "../format.js";
+import { minutesToHm, secsToHm, round, gmtToLocalClock, fmtDay } from "../format.js";
 import { getIntraday } from "../api.js";
 import { useAsync } from "../useApi.js";
 import { visible } from "../caps.js";
@@ -79,7 +79,7 @@ export default function Sleep({ today, trends, caps, onOpen }) {
       <Card onClick={() => onOpen("sleep")} className="cursor-pointer">
         <SectionTitle sub="Tap for the full 90-day view">Sleep score — history</SectionTitle>
         <MiniArea data={sleepHistory} color={ACCENT.sleep} height={170} area
-          xTickFormatter={(d) => (typeof d === "string" ? d.slice(5) : "")} />
+          xTickFormatter={(d) => (typeof d === "string" ? fmtDay(d) : "")} />
       </Card>
 
       <Grid className="grid grid-cols-1 lg:grid-cols-2 gap-4">

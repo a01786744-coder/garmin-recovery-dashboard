@@ -72,6 +72,27 @@ export function gmtToLocalClock(s) {
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
+// Chart/date display style, driven by the `date_style` setting ("month" ->
+// "Jul 4", "number" -> "07-04"). App.jsx calls setDateStyle when settings
+// load/change; consumers re-render because settings state changed.
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+let _dateStyle = "month";
+
+export function setDateStyle(style) {
+  _dateStyle = style === "number" ? "number" : "month";
+}
+
+// "2026-07-04" -> "Jul 4" (or "07-04" in number mode). Non-dates pass through.
+export function fmtDay(iso) {
+  if (typeof iso !== "string" || iso.length < 10) return iso ?? "";
+  if (_dateStyle === "number") return iso.slice(5, 10);
+  const m = parseInt(iso.slice(5, 7), 10);
+  const d = parseInt(iso.slice(8, 10), 10);
+  if (!m || !d || m > 12) return iso;
+  return `${MONTHS[m - 1]} ${d}`;
+}
+
 // Local calendar date as YYYY-MM-DD. (toISOString() is UTC and rolls over to
 // "tomorrow" during the evening in timezones west of UTC.)
 export function localToday() {

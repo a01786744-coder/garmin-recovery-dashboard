@@ -3,6 +3,7 @@ import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine,
 } from "recharts";
 import NoData from "../components/ui/NoData.jsx";
+import { fmtDay } from "../format.js";
 
 export default function EvolutionChart({ series, color = "#38bdf8", height = 220 }) {
   const data = (series || []).map((d) => ({ x: d.date, y: d.value }));
@@ -20,10 +21,10 @@ export default function EvolutionChart({ series, color = "#38bdf8", height = 220
           </linearGradient>
         </defs>
         <XAxis dataKey="x" stroke="#52525b" fontSize={10} tickLine={false} axisLine={false}
-          minTickGap={48} tickFormatter={(d) => (typeof d === "string" ? d.slice(5) : "")} />
+          minTickGap={48} tickFormatter={(d) => (typeof d === "string" ? fmtDay(d) : "")} />
         <YAxis domain={["auto", "auto"]} stroke="#52525b" fontSize={10} width={32}
           tickLine={false} axisLine={false} />
-        <Tooltip contentStyle={{ background: "#18181b", border: "1px solid #27272a", borderRadius: 8, color: "#fff", fontSize: 12 }} />
+        <Tooltip labelFormatter={(d) => fmtDay(d)} contentStyle={{ background: "#18181b", border: "1px solid #27272a", borderRadius: 8, color: "#fff", fontSize: 12 }} />
         <ReferenceLine y={avg} stroke="#71717a" strokeDasharray="4 4"
           label={{ value: `avg ${Math.round(avg)}`, fill: "#71717a", fontSize: 10, position: "insideTopRight" }} />
         <Area type="monotone" dataKey="y" stroke={color} strokeWidth={2} fill={`url(#${gid})`}
