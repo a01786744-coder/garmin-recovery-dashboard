@@ -11,6 +11,7 @@ import { secsToHms, round, num, titleCase, fmtDay } from "../format.js";
 import { visible } from "../caps.js";
 import MonthHeatmap from "../components/MonthHeatmap.jsx";
 import CompareChart from "../components/CompareChart.jsx";
+import LongTrends from "../components/LongTrends.jsx";
 
 // Garmin personal-record type labels + how to format the value. Types not in
 // this map are hidden rather than shown as a raw "record N".
@@ -65,6 +66,8 @@ export default function Trends({ today, trends, caps, onOpen }) {
         </Card>
         )}
       </Grid>
+
+      <LongTrends />
 
       <Grid className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {show("vo2max") && <StatTile label="VO₂max" value={perf.vo2max} digits={0} accent="#22c55e" onClick={() => onOpen("vo2max")} />}

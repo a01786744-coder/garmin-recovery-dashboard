@@ -3,6 +3,28 @@
 All notable changes to the Garmin Recovery Dashboard. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/). Dates are YYYY-MM-DD.
 
+## [3.7.0] — 2026-07-11
+
+### Added
+- **Sleep debt tracker** (Sleep tab): cumulative need-minus-slept over the
+  last 7 and 14 days with per-night deficit/surplus bars. Counts only nights
+  Garmin reported — a missing night is never assumed slept or missed.
+- **Long-term trends** (Trends tab): Body Battery, waking respiration, VO₂max
+  and fitness age as lines over 30d/90d/6m/1y — metrics that previously only
+  showed today's number.
+- The backfill now also captures **body battery, stress, and sleep need** for
+  past days (parsed from data it already downloads — no extra Garmin calls);
+  a one-time re-backfill fills the new history.
+
+### Fixed
+- **Re-backfills no longer erase data.** A version-bump re-backfill used to
+  overwrite each day's full row with its sparser fetch, wiping richer fields
+  the daily sync had stored (sleep need, readiness, respiration…). Backfill
+  upserts are now merge-mode: missing values never overwrite existing ones.
+
+### Notes
+- 168 backend tests.
+
 ## [3.6.0] — 2026-07-08
 
 ### Added

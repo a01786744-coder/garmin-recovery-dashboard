@@ -147,6 +147,12 @@ class GarminClient:
             "intensity_vigorous": summary.get("vigorousIntensityMinutes"),
             "active_calories": summary.get("activeKilocalories"),
             "distance_m": summary.get("totalDistanceMeters"),
+            # v4: body battery + stress for long-term trends (same summary).
+            "body_battery": summary.get("bodyBatteryMostRecentValue"),
+            "stress_avg": summary.get("averageStressLevel"),
+            # v5: sleep need for the debt tracker (same sleep payload).
+            "sleep_need_actual": (sdto.get("sleepNeed") or {}).get("actual"),
+            "sleep_need_baseline": (sdto.get("sleepNeed") or {}).get("baseline"),
         }
 
     def fetch_device_name(self):

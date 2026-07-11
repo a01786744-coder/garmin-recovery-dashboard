@@ -138,11 +138,18 @@ def export_all(path):
         }
 
 
-def upsert_daily(path, date, metrics, recovery, strain):
+def upsert_daily(path, date, metrics, recovery, strain, merge=False):
+    """Insert or update a day. merge=True (used by the backfill) makes None a
+    no-op per column — a sparse re-fetch must never wipe richer fields the
+    daily sync already stored (sleep need, readiness, respiration, ...)."""
     cols = ["date"] + DAILY_FIELDS + ["recovery_score", "strain_score"]
     vals = [date] + [metrics.get(f) for f in DAILY_FIELDS] + [recovery, strain]
     placeholders = ", ".join("?" for _ in cols)
-    updates = ", ".join(f"{c2}=excluded.{c2}" for c2 in cols if c2 != "date")
+    if merge:
+        updates = ", ".join(f"{c2}=COALESCE(excluded.{c2}, daily_metrics.{c2})"
+                            for c2 in cols if c2 != "date")
+    else:
+        updates = ", ".join(f"{c2}=excluded.{c2}" for c2 in cols if c2 != "date")
     with _conn(path) as c:
         c.execute(
             f"INSERT INTO daily_metrics ({', '.join(cols)}) VALUES ({placeholders}) "

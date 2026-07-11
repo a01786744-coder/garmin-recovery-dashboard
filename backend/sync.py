@@ -105,7 +105,9 @@ def run_sync(client, db_path, today=None, backfill_days=BASELINE_WINDOW_DAYS, pa
             metrics = {k: None for k in db.DAILY_FIELDS}
             metrics.update(base)
             recovery = _recovery_for(db_path, d, base.get("hrv_last_night"), base.get("rhr"), backfill_days)
-            db.upsert_daily(db_path, d, metrics, recovery, None)
+            # merge: a sparse baseline re-fetch must never wipe richer fields
+            # a past full sync already stored for this day.
+            db.upsert_daily(db_path, d, metrics, recovery, None, merge=True)
             if pacing:
                 time.sleep(pacing)
 

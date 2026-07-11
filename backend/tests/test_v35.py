@@ -133,7 +133,8 @@ def test_fetch_baseline_includes_activity_fields():
     api.get_user_summary.return_value = {
         "restingHeartRate": 50, "totalSteps": 9000,
         "moderateIntensityMinutes": 12, "vigorousIntensityMinutes": 3,
-        "activeKilocalories": 400, "totalDistanceMeters": 6500}
+        "activeKilocalories": 400, "totalDistanceMeters": 6500,
+        "bodyBatteryMostRecentValue": 61, "averageStressLevel": 27}
     api.get_hrv_data.return_value = {"hrvSummary": {"lastNightAvg": 40}}
     api.get_sleep_data.return_value = {}
     c = gc.GarminClient("e", "p", "ts"); c._api = api
@@ -141,11 +142,14 @@ def test_fetch_baseline_includes_activity_fields():
     assert base["steps"] == 9000
     assert base["intensity_moderate"] == 12 and base["intensity_vigorous"] == 3
     assert base["active_calories"] == 400 and base["distance_m"] == 6500
+    # v4: body battery + stress history from the same (already-fetched) summary
+    assert base["body_battery"] == 61
+    assert base["stress_avg"] == 27
 
 
 def test_baseline_fetch_version_bumped_for_strain_history():
     from backend.config import BASELINE_FETCH_VERSION
-    assert BASELINE_FETCH_VERSION >= 3   # triggers the one-time re-backfill
+    assert BASELINE_FETCH_VERSION >= 4   # v4 = body battery/stress history
 
 
 # --- journal correlations vs next-night sleep + structured fields ---

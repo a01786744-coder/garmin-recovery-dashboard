@@ -53,8 +53,10 @@ BASELINE_MIN_DAYS = 14
 # verdict enough to hide a tab/card (avoids hiding on early/sparse data).
 CAPABILITY_READY_DAYS = 3
 # Bumped when the backfill fetch set changes (v2 added sleep; v3 added steps/
-# intensity for historical strain). On an older DB this triggers a one-time
+# intensity for historical strain; v4 added body battery/stress; v5 added
+# sleep need — and backfill upserts became merge-mode, so re-fetches never
+# wipe richer stored fields). On an older DB this triggers a one-time
 # re-backfill of the window so history fills in.
-BASELINE_FETCH_VERSION = 3
+BASELINE_FETCH_VERSION = 5
 
 DATA_DIR.mkdir(parents=True, exist_ok=True)

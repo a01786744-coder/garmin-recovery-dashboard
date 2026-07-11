@@ -30,6 +30,6 @@ def test_insights_endpoint(tmp_path):
         db.upsert_daily(p, f"2026-06-{d:02d}", m, recovery=(50 if d <= 7 else 60), strain=None)
     body = client.get("/api/insights").get_json()
     assert set(body) == {"weekly", "streaks", "insights", "correlations", "recap",
-                         "week_extremes"}
+                         "week_extremes", "sleep_debt"}
     assert body["weekly"]["recovery_score"]["this"] == 60
     assert set(body["recap"]) == {"morning", "afternoon"}

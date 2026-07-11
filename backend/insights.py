@@ -190,6 +190,31 @@ def journal_correlations(daily, entries):
     return out
 
 
+def sleep_debt(daily):
+    """Cumulative sleep debt over the trailing 7 and 14 days: sum of
+    (baseline need - actual slept), minutes. Only days where Garmin reported
+    BOTH values count (a missing day is never assumed slept or missed).
+    Returns None when no usable days exist. Negative totals = surplus."""
+    rows = (daily or [])[-14:]
+    series = []
+    d7 = n7 = d14 = n14 = 0
+    for i, r in enumerate(rows):
+        a, b = r.get("sleep_need_actual"), r.get("sleep_need_baseline")
+        deficit = (b - a) if (a is not None and b is not None) else None
+        series.append({"date": r.get("date"), "deficit_min": deficit})
+        if deficit is not None:
+            d14 += deficit
+            n14 += 1
+            if i >= len(rows) - 7:
+                d7 += deficit
+                n7 += 1
+    if n14 == 0:
+        return None
+    return {"series": series,
+            "debt7_min": round(d7), "days7": n7,
+            "debt14_min": round(d14), "days14": n14}
+
+
 def week_extremes(daily):
     """Best and worst recovery day of the last 7 rows; None when nothing is
     scored (never invented)."""

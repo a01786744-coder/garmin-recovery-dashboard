@@ -13,6 +13,7 @@ import { minutesToHm, secsToHm, round, gmtToLocalClock, fmtDay } from "../format
 import { getIntraday } from "../api.js";
 import { useAsync } from "../useApi.js";
 import { visible } from "../caps.js";
+import SleepDebt from "../components/SleepDebt.jsx";
 
 const STAGES = [
   ["deep_sleep_s", "Deep", "#1d4ed8"],
@@ -34,7 +35,7 @@ const QUAL_COLORS = {
 
 const qualWord = (q) => (q ? q.charAt(0) + q.slice(1).toLowerCase() : null);
 
-export default function Sleep({ today, trends, caps, onOpen }) {
+export default function Sleep({ today, trends, caps, onOpen, insights }) {
   const m = today?.metrics || {};
   const date = m.date;
   const show = (cat) => visible(caps, cat);
@@ -81,6 +82,8 @@ export default function Sleep({ today, trends, caps, onOpen }) {
         <MiniArea data={sleepHistory} color={ACCENT.sleep} height={170} area
           xTickFormatter={(d) => (typeof d === "string" ? fmtDay(d) : "")} />
       </Card>
+
+      <SleepDebt debt={insights?.sleep_debt} />
 
       <Grid className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card>
