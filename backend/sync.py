@@ -165,5 +165,6 @@ def sync_activity_detail(client, db_path, activity_id):
         return db.get_activity_detail(db_path, activity_id)
     db.upsert_activity_detail(db_path, activity_id, polyline_json=d.get("polyline"),
                               splits_json=d.get("splits"), hr_zones_json=d.get("hr_zones"),
-                              weather_json=d.get("weather"), summary_json=d.get("summary"))
+                              weather_json=d.get("weather"), summary_json=d.get("summary"),
+                              exercise_sets_json=d.get("exercise_sets"))
     return db.get_activity_detail(db_path, activity_id)

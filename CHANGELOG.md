@@ -3,6 +3,24 @@
 All notable changes to the Garmin Recovery Dashboard. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/). Dates are YYYY-MM-DD.
 
+## [3.8.0] — 2026-07-12
+
+### Added
+- **Per-sport activity views.** The activity detail now adapts to the sport:
+  outdoor GPS activities keep the map + splits; **treadmill/indoor cardio**
+  drops the dead map and leads with splits and HR; **gym sessions** show the
+  recorded **exercises with sets, reps and weight** (fetched on demand and
+  cached); anything else (team sports, no GPS) gets an effort-focused view
+  (max HR, aerobic/anaerobic training effect, zones).
+- **Sport filter chips** on the Activities list (All · Run · Ride · Gym ·
+  Other, color-coded) and the list now covers your full recent history via a
+  new `/api/activities` endpoint — not just the last 10.
+- **Weekly volume chart**: stacked hours per week by sport for the last 8
+  weeks.
+
+### Notes
+- 172 backend tests.
+
 ## [3.7.0] — 2026-07-11
 
 ### Added

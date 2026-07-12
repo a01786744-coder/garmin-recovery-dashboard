@@ -342,6 +342,9 @@ class GarminClient:
         splits = self._safe(lambda: api.get_activity_splits(activity_id), {}) or {}
         zones = self._safe(lambda: api.get_activity_hr_in_timezones(activity_id), []) or []
         weather = self._safe(lambda: api.get_activity_weather(activity_id), None)
+        # Strength workouts carry exercises/sets/reps/weight here; other
+        # activity types simply return nothing (absorbed by _safe).
+        sets = self._safe(lambda: api.get_activity_exercise_sets(activity_id), None)
         summary = {k: geo.get(k) for k in
                    ("minLat", "maxLat", "minLon", "maxLon", "startPoint", "endPoint")}
         return {
@@ -350,4 +353,5 @@ class GarminClient:
             "hr_zones": zones if isinstance(zones, list) else None,
             "weather": weather,
             "summary": summary,
+            "exercise_sets": (sets or {}).get("exerciseSets") if isinstance(sets, dict) else None,
         }

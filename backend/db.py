@@ -98,6 +98,8 @@ def init_db(path):
                 splits_json TEXT, hr_zones_json TEXT, weather_json TEXT,
                 summary_json TEXT, fetched_at TEXT
             )""")
+        # v3.8: strength exercise sets cached alongside the rest of the detail.
+        _ensure_columns(c, "activity_detail", [("exercise_sets_json", "TEXT")])
 
 
 _ALL_TABLES = ["daily_metrics", "activities", "sync_log", "daily_intraday",
@@ -412,16 +414,20 @@ def get_personal_records(path):
 
 
 def upsert_activity_detail(path, activity_id, polyline_json=None, splits_json=None,
-                           hr_zones_json=None, weather_json=None, summary_json=None):
+                           hr_zones_json=None, weather_json=None, summary_json=None,
+                           exercise_sets_json=None):
     import datetime as _dt
     blobs = [json.dumps(x) if x is not None else None
-             for x in (polyline_json, splits_json, hr_zones_json, weather_json, summary_json)]
+             for x in (polyline_json, splits_json, hr_zones_json, weather_json,
+                       summary_json, exercise_sets_json)]
     with _conn(path) as c:
         c.execute("""INSERT INTO activity_detail (activity_id, polyline_json, splits_json,
-            hr_zones_json, weather_json, summary_json, fetched_at) VALUES (?,?,?,?,?,?,?)
+            hr_zones_json, weather_json, summary_json, exercise_sets_json, fetched_at)
+            VALUES (?,?,?,?,?,?,?,?)
             ON CONFLICT(activity_id) DO UPDATE SET polyline_json=excluded.polyline_json,
             splits_json=excluded.splits_json, hr_zones_json=excluded.hr_zones_json,
             weather_json=excluded.weather_json, summary_json=excluded.summary_json,
+            exercise_sets_json=excluded.exercise_sets_json,
             fetched_at=excluded.fetched_at""",
             [activity_id] + blobs + [_dt.datetime.now().isoformat()])
 
@@ -437,4 +443,6 @@ def get_activity_detail(path, activity_id):
             return json.loads(v) if v else None
         return {"polyline": _load(row["polyline_json"]), "splits": _load(row["splits_json"]),
                 "hr_zones": _load(row["hr_zones_json"]), "weather": _load(row["weather_json"]),
-                "summary": _load(row["summary_json"]), "fetched_at": row["fetched_at"]}
+                "summary": _load(row["summary_json"]),
+                "exercise_sets": _load(row["exercise_sets_json"]),
+                "fetched_at": row["fetched_at"]}

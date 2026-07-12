@@ -153,6 +153,13 @@ def create_app(db_path=cfg.DB_PATH, client_factory=None,
             },
         })
 
+    @app.get("/api/activities")
+    def activities_list():
+        # Full recent history for the Activities tab (filters + weekly volume);
+        # /api/today keeps its short list for the Overview.
+        limit = min(max(int(request.args.get("limit", 100)), 1), 500)
+        return jsonify({"activities": db.get_recent_activities(db_path, limit)})
+
     @app.get("/api/days")
     def days():
         # Dates that have data, for stepping back through history.
