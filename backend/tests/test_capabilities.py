@@ -29,9 +29,13 @@ def test_entry_level_profile_hides_unsupported_categories():
 def test_full_watch_profile_supports_everything():
     rows = [_full_row(hrv_last_night=45, sleep_score=80, stress_avg=20, body_battery=50,
                       training_readiness_score=70, acwr_ratio=0.9, rhr=50,
-                      resp_sleep=13, intensity_weekly_total=100, sleep_need_actual=480)
+                      resp_sleep=13, intensity_weekly_total=100, sleep_need_actual=480,
+                      recovery_time_min=2000, skin_temp_dev_c=-0.3, spo2_avg=94,
+                      hydration_ml=500)
             for _ in range(30)]
-    perf = [{"vo2max": 60, "race_5k": 1200, "endurance_score": 6800, "heat_acclimation": 20}]
+    perf = [{"vo2max": 60, "race_5k": 1200, "endurance_score": 6800, "heat_acclimation": 20,
+             "running_tolerance_load": 15000, "hill_score": 28, "lt_hr": 180,
+             "body_weight_g": 57000}]
     p = caps.compute_profile(rows, perf, records=[{"id": 1, "value": 5}],
                              activities=[{"activity_id": 1}], ready_days=3)
     assert p["ready"] is True

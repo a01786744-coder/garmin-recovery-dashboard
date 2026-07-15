@@ -16,7 +16,6 @@ const CHARTS = [
   ["Body Battery", "days", "body_battery", ACCENT.body],
   ["Waking respiration", "days", "resp_waking", ACCENT.resp],
   ["VO₂max", "perf", "vo2max", "#22c55e"],
-  ["Fitness age", "perf", "fitness_age", "#38bdf8"],
 ];
 
 export default function LongTrends() {

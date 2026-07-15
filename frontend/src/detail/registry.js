@@ -4,7 +4,7 @@ export const METRICS = {
   sleep:              { label: "Sleep", source: "daily", field: "sleep_score", accent: "#8b5cf6", max: 100 },
   strain:             { label: "Strain", source: "daily", field: "strain_score", custom: true, accent: "#f97316", max: 100 },
   body_battery:       { label: "Body Battery", source: "daily", field: "body_battery", accent: "#38bdf8", intraday: "body_battery", max: 100 },
-  rhr:                { label: "Resting HR", source: "daily", field: "rhr", unit: "bpm", accent: "#f97316" },
+  rhr:                { label: "Resting HR", source: "daily", field: "rhr", unit: "bpm", accent: "#f97316", intraday: "hr" },
   hrv:                { label: "HRV", source: "daily", field: "hrv_last_night", unit: "ms", accent: "#22c55e", intraday: "hrv" },
   training_readiness: { label: "Training Readiness", source: "daily", field: "training_readiness_score", accent: "#22c55e", max: 100 },
   stress:             { label: "Stress", source: "daily", field: "stress_avg", accent: "#eab308", intraday: "stress", max: 100 },

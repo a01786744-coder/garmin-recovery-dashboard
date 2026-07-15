@@ -9,7 +9,7 @@ import MiniArea from "../components/ui/MiniArea.jsx";
 import SectionTitle from "../components/ui/SectionTitle.jsx";
 import NoData from "../components/ui/NoData.jsx";
 import { ACCENT } from "../theme.js";
-import { minutesToHm, secsToHm, round, gmtToLocalClock, fmtDay } from "../format.js";
+import { minutesToHm, secsToHm, round, num, gmtToLocalClock, fmtDay } from "../format.js";
 import { getIntraday } from "../api.js";
 import { useAsync } from "../useApi.js";
 import { visible } from "../caps.js";
@@ -150,6 +150,10 @@ export default function Sleep({ today, trends, caps, onOpen, insights }) {
           (m.deep_sleep_s || 0) + (m.light_sleep_s || 0) + (m.rem_sleep_s || 0)
         )} />
         <StatTile label="Resting HR" value={m.rhr} unit="bpm" accent={ACCENT.rhr} onClick={() => onOpen("rhr")} />
+        {show("spo2") && <StatTile label="Blood oxygen (sleep)" value={m.spo2_avg_sleep} unit="%" accent="#38bdf8" sub={m.spo2_lowest != null ? `low ${round(m.spo2_lowest)}%` : undefined} />}
+        {show("skin_temp") && m.skin_temp_dev_c != null &&
+          <StatTile label="Skin temp" value={`${m.skin_temp_dev_c > 0 ? "+" : ""}${num(m.skin_temp_dev_c, 1)}`} unit="°C" accent="#fb7185" sub="vs baseline" />}
+        {m.nap_time_s > 0 && <StatTile label="Naps" value={secsToHm(m.nap_time_s)} accent="#a78bfa" />}
       </Grid>
     </div>
   );

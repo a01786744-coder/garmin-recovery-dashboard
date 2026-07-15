@@ -8,7 +8,7 @@ import ZoneBar from "../components/ui/ZoneBar.jsx";
 import SectionTitle from "../components/ui/SectionTitle.jsx";
 import NoData from "../components/ui/NoData.jsx";
 import { BAND, band, ACCENT } from "../theme.js";
-import { round, secsToHm, titleCase, localToday } from "../format.js";
+import { round, secsToHm, minutesToHm, num, titleCase, localToday } from "../format.js";
 import { getIntraday } from "../api.js";
 import { useAsync } from "../useApi.js";
 import { visible } from "../caps.js";
@@ -106,6 +106,11 @@ function MorningView({ m, show, onOpen, baseline }) {
         {show("rhr") && <StatTile label="Resting HR" value={m.rhr} unit="bpm" accent={ACCENT.rhr} onClick={() => onOpen("rhr")} />}
         {show("body_battery") && <StatTile label="Body Battery" value={m.body_battery} accent={ACCENT.body} onClick={() => onOpen("body_battery")} />}
         {show("respiration") && <StatTile label="Sleep respiration" value={m.resp_sleep} unit="br/min" accent={ACCENT.resp} />}
+        {show("recovery_time") && m.recovery_time_min != null &&
+          <StatTile label="Recovery time" value={minutesToHm(m.recovery_time_min)} accent="#f59e0b" sub="until fully recovered" />}
+        {show("spo2") && <StatTile label="Blood oxygen" value={m.spo2_avg} unit="%" accent="#38bdf8" sub={m.spo2_lowest != null ? `low ${round(m.spo2_lowest)}%` : undefined} />}
+        {show("skin_temp") && m.skin_temp_dev_c != null &&
+          <StatTile label="Skin temp" value={`${m.skin_temp_dev_c > 0 ? "+" : ""}${num(m.skin_temp_dev_c, 1)}`} unit="°C" accent="#fb7185" sub="vs your baseline" />}
       </Grid>
     </div>
   );

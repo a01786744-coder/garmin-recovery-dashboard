@@ -23,6 +23,11 @@ DAILY_FIELDS = [
     "load_aerobic_low", "load_aerobic_high", "load_anaerobic",
     "tr_sleep_factor", "tr_recovery_factor", "tr_acwr_factor",
     "tr_hrv_factor", "tr_stress_factor",
+    # v3.9: recovery time + naps + skin temp (free from payloads fetch_day
+    # already pulls); SpO2 + hydration (one extra call each, today only).
+    "recovery_time_min", "nap_time_s", "skin_temp_dev_c",
+    "spo2_avg", "spo2_lowest", "spo2_avg_sleep",
+    "hydration_ml", "hydration_goal_ml", "sweat_loss_ml",
 ]
 
 # Daily fields stored as TEXT rather than REAL.
@@ -87,6 +92,12 @@ def init_db(path):
                 race_marathon REAL, endurance_score REAL, endurance_class REAL,
                 heat_acclimation REAL, altitude_acclimation REAL
             )""")
+        # v3.9: performance-snapshot metrics added later — migrate older DBs.
+        _ensure_columns(c, "perf_metrics", [
+            ("running_tolerance_load", "REAL"), ("running_tolerance_ceiling", "REAL"),
+            ("hill_score", "REAL"), ("lt_hr", "REAL"), ("lt_power", "REAL"),
+            ("body_weight_g", "REAL"),
+        ])
         c.execute("""
             CREATE TABLE IF NOT EXISTS personal_records (
                 id INTEGER PRIMARY KEY, type_id INTEGER, value REAL,
@@ -99,7 +110,9 @@ def init_db(path):
                 summary_json TEXT, fetched_at TEXT
             )""")
         # v3.8: strength exercise sets cached alongside the rest of the detail.
-        _ensure_columns(c, "activity_detail", [("exercise_sets_json", "TEXT")])
+        # v3.9: running dynamics + power snapshot for the activity.
+        _ensure_columns(c, "activity_detail",
+                        [("exercise_sets_json", "TEXT"), ("dynamics_json", "TEXT")])
 
 
 _ALL_TABLES = ["daily_metrics", "activities", "sync_log", "daily_intraday",
@@ -370,14 +383,21 @@ def get_intraday(path, date, metric):
 
 _PERF_COLS = ["vo2max", "vo2max_cycling", "fitness_age", "race_5k", "race_10k",
               "race_hm", "race_marathon", "endurance_score", "endurance_class",
-              "heat_acclimation", "altitude_acclimation"]
+              "heat_acclimation", "altitude_acclimation",
+              # v3.9
+              "running_tolerance_load", "running_tolerance_ceiling",
+              "hill_score", "lt_hr", "lt_power", "body_weight_g"]
 
 
 def upsert_perf(path, date, perf):
     cols = ["date"] + _PERF_COLS
     vals = [date] + [perf.get(k) for k in _PERF_COLS]
     ph = ", ".join("?" for _ in cols)
-    upd = ", ".join(f"{c2}=excluded.{c2}" for c2 in cols if c2 != "date")
+    # COALESCE: these fields come from several endpoints, any of which can fail
+    # independently (returns None). A re-sync must never wipe a value another
+    # endpoint stored earlier the same day.
+    upd = ", ".join(f"{c2}=COALESCE(excluded.{c2}, perf_metrics.{c2})"
+                    for c2 in cols if c2 != "date")
     with _conn(path) as c:
         c.execute(f"INSERT INTO perf_metrics ({', '.join(cols)}) VALUES ({ph}) "
                   f"ON CONFLICT(date) DO UPDATE SET {upd}", vals)
@@ -415,19 +435,21 @@ def get_personal_records(path):
 
 def upsert_activity_detail(path, activity_id, polyline_json=None, splits_json=None,
                            hr_zones_json=None, weather_json=None, summary_json=None,
-                           exercise_sets_json=None):
+                           exercise_sets_json=None, dynamics_json=None):
     import datetime as _dt
     blobs = [json.dumps(x) if x is not None else None
              for x in (polyline_json, splits_json, hr_zones_json, weather_json,
-                       summary_json, exercise_sets_json)]
+                       summary_json, exercise_sets_json, dynamics_json)]
     with _conn(path) as c:
         c.execute("""INSERT INTO activity_detail (activity_id, polyline_json, splits_json,
-            hr_zones_json, weather_json, summary_json, exercise_sets_json, fetched_at)
-            VALUES (?,?,?,?,?,?,?,?)
+            hr_zones_json, weather_json, summary_json, exercise_sets_json, dynamics_json,
+            fetched_at)
+            VALUES (?,?,?,?,?,?,?,?,?)
             ON CONFLICT(activity_id) DO UPDATE SET polyline_json=excluded.polyline_json,
             splits_json=excluded.splits_json, hr_zones_json=excluded.hr_zones_json,
             weather_json=excluded.weather_json, summary_json=excluded.summary_json,
             exercise_sets_json=excluded.exercise_sets_json,
+            dynamics_json=excluded.dynamics_json,
             fetched_at=excluded.fetched_at""",
             [activity_id] + blobs + [_dt.datetime.now().isoformat()])
 
@@ -441,8 +463,10 @@ def get_activity_detail(path, activity_id):
 
         def _load(v):
             return json.loads(v) if v else None
+        keys = row.keys()
         return {"polyline": _load(row["polyline_json"]), "splits": _load(row["splits_json"]),
                 "hr_zones": _load(row["hr_zones_json"]), "weather": _load(row["weather_json"]),
                 "summary": _load(row["summary_json"]),
                 "exercise_sets": _load(row["exercise_sets_json"]),
+                "dynamics": _load(row["dynamics_json"]) if "dynamics_json" in keys else None,
                 "fetched_at": row["fetched_at"]}

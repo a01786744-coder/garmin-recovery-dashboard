@@ -43,6 +43,11 @@ DAILY_CATEGORY_FIELDS = {
                           "intensity_weekly_total"],
     "steps_floors": ["steps", "floors_ascended", "distance_m", "active_calories"],
     "vo2max": ["vo2max"],
+    # v3.9
+    "spo2": ["spo2_avg", "spo2_lowest", "spo2_avg_sleep"],
+    "hydration": ["hydration_ml", "hydration_goal_ml", "sweat_loss_ml"],
+    "recovery_time": ["recovery_time_min"],
+    "skin_temp": ["skin_temp_dev_c"],
 }
 
 # category -> perf_metrics fields (perf reflects current/all-time values).
@@ -51,6 +56,11 @@ PERF_CATEGORY_FIELDS = {
     "race_predictions": ["race_5k", "race_10k", "race_hm", "race_marathon"],
     "endurance": ["endurance_score", "endurance_class"],
     "acclimation": ["heat_acclimation", "altitude_acclimation"],
+    # v3.9
+    "running_tolerance": ["running_tolerance_load", "running_tolerance_ceiling"],
+    "hill_score": ["hill_score"],
+    "lactate_threshold": ["lt_hr", "lt_power"],
+    "body_weight": ["body_weight_g"],
 }
 
 ALL_CATEGORIES = sorted(

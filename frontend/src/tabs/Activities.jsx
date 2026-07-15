@@ -89,6 +89,62 @@ function ExerciseTable({ sets, units }) {
   );
 }
 
+// Recorded conditions for an outdoor activity (already cached with the detail).
+function WeatherRow({ weather }) {
+  if (!weather) return null;
+  const desc = (weather.weatherTypeDTO || {}).desc;
+  const parts = [];
+  if (weather.temp != null) parts.push(`${round(weather.temp)}°`);
+  if (weather.apparentTemp != null && weather.apparentTemp !== weather.temp)
+    parts.push(`feels ${round(weather.apparentTemp)}°`);
+  if (weather.relativeHumidity != null) parts.push(`${round(weather.relativeHumidity)}% humidity`);
+  if (weather.windSpeed != null) {
+    const dir = (weather.windDirectionCompassPoint || "").toUpperCase();
+    parts.push(`wind ${round(weather.windSpeed)}${dir ? ` ${dir}` : ""}`);
+  }
+  if (!parts.length && !desc) return null;
+  return (
+    <div className="mb-4 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl bg-neutral-950/40 px-3 py-2 text-sm text-neutral-300">
+      {desc && <span className="font-medium text-neutral-100">{desc}</span>}
+      {desc && parts.length > 0 && <span className="text-neutral-600">·</span>}
+      <span className="text-neutral-400">{parts.join(" · ")}</span>
+    </div>
+  );
+}
+
+// Running dynamics + power (from the activity summary). Only rendered when present.
+function DynamicsGrid({ dynamics }) {
+  const d = dynamics;
+  if (!d) return null;
+  const tiles = [
+    ["Cadence", d.cadence != null ? `${round(d.cadence)}` : null, "spm"],
+    ["Avg power", d.avg_power != null ? `${round(d.avg_power)}` : null, "W"],
+    ["Max power", d.max_power != null ? `${round(d.max_power)}` : null, "W"],
+    ["Stride length", d.stride_length != null ? `${round(d.stride_length)}` : null, "cm"],
+    ["Ground contact", d.ground_contact_time != null ? `${round(d.ground_contact_time)}` : null, "ms"],
+    ["Vertical osc.", d.vertical_oscillation != null ? num(d.vertical_oscillation, 1) : null, "cm"],
+    ["Vertical ratio", d.vertical_ratio != null ? num(d.vertical_ratio, 1) : null, "%"],
+    ["Elevation gain", d.elevation_gain != null ? `${round(d.elevation_gain)}` : null, "m"],
+  ].filter(([, v]) => v != null);
+  if (!tiles.length) return null;
+  return (
+    <>
+      <SectionTitle>Running dynamics & power</SectionTitle>
+      <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {tiles.map(([label, value, unit]) => (
+          <div key={label} className="rounded-xl bg-neutral-950/40 p-3">
+            <div className="text-[11px] uppercase tracking-wide text-neutral-500">{label}</div>
+            <div className="mt-0.5 flex items-baseline gap-1">
+              <span className="text-lg font-bold text-neutral-50">{value}</span>
+              <span className="text-xs text-neutral-500">{unit}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
 function Zones({ zones }) {
   return (
     <ZoneBar
@@ -142,6 +198,9 @@ function Detail({ activity, units }) {
           )}
         </div>
       )}
+
+      {!loading && <WeatherRow weather={data?.weather} />}
+      {!loading && <DynamicsGrid dynamics={data?.dynamics} />}
 
       {kind === "strength" && (
         <>

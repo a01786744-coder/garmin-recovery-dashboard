@@ -37,6 +37,24 @@ class GarminMFARequired(Exception):
         self.client_state = client_state
 
 
+def _running_dynamics(sd):
+    """Pull running dynamics + power from an activity summaryDTO. Returns a dict
+    with only the fields present (all None -> None, so the UI hides the card)."""
+    fields = {
+        "cadence": sd.get("averageRunCadence"),
+        "max_cadence": sd.get("maxRunCadence"),
+        "stride_length": sd.get("strideLength"),
+        "ground_contact_time": sd.get("groundContactTime"),
+        "vertical_oscillation": sd.get("verticalOscillation"),
+        "vertical_ratio": sd.get("verticalRatio"),
+        "avg_power": sd.get("averagePower"),
+        "norm_power": sd.get("normalizedPower"),
+        "max_power": sd.get("maxPower"),
+        "elevation_gain": sd.get("elevationGain"),
+    }
+    return fields if any(v is not None for v in fields.values()) else None
+
+
 def _primary_device_value(device_map):
     """Garmin nests several training metrics under a {deviceId: {...}} map.
     Return the primary device's value (else the first), or {} if none."""
@@ -153,6 +171,10 @@ class GarminClient:
             # v5: sleep need for the debt tracker (same sleep payload).
             "sleep_need_actual": (sdto.get("sleepNeed") or {}).get("actual"),
             "sleep_need_baseline": (sdto.get("sleepNeed") or {}).get("baseline"),
+            # v3.9: naps + skin temp come free from this same sleep payload, so
+            # backfilled history gains them too (no extra calls).
+            "nap_time_s": sdto.get("napTimeSeconds"),
+            "skin_temp_dev_c": sleep.get("avgSkinTempDeviationC"),
         }
 
     def fetch_device_name(self):
@@ -180,6 +202,9 @@ class GarminClient:
         intensity = self._safe(lambda: api.get_intensity_minutes_data(date_str), {}) or {}
         resp = self._safe(lambda: api.get_respiration_data(date_str), {}) or {}
         tstat = self._safe(lambda: api.get_training_status(date_str), {}) or {}
+        # v3.9: SpO2 + hydration (one call each, today only — never backfilled).
+        spo2 = self._safe(lambda: api.get_spo2_data(date_str), {}) or {}
+        hydration = self._safe(lambda: api.get_hydration_data(date_str), {}) or {}
 
         sdto = (sleep or {}).get("dailySleepDTO", {}) or {}
         hrv_sum = (hrv or {}).get("hrvSummary", {}) if hrv else {}
@@ -252,6 +277,18 @@ class GarminClient:
             "tr_acwr_factor": tr0.get("acwrFactorPercent"),
             "tr_hrv_factor": tr0.get("hrvFactorPercent"),
             "tr_stress_factor": tr0.get("stressHistoryFactorPercent"),
+            # v3.9: recovery time (minutes) is already in the readiness payload;
+            # naps + skin temp are free from the sleep payload above.
+            "recovery_time_min": tr0.get("recoveryTime"),
+            "nap_time_s": sdto.get("napTimeSeconds"),
+            "skin_temp_dev_c": sleep.get("avgSkinTempDeviationC"),
+            # v3.9: SpO2 (blood oxygen) + hydration.
+            "spo2_avg": spo2.get("averageSpO2"),
+            "spo2_lowest": spo2.get("lowestSpO2"),
+            "spo2_avg_sleep": spo2.get("avgSleepSpO2"),
+            "hydration_ml": hydration.get("valueInML"),
+            "hydration_goal_ml": hydration.get("goalInML"),
+            "sweat_loss_ml": hydration.get("sweatLossInML"),
         }
         availability = {k: ("available" if v is not None else "unavailable")
                         for k, v in metrics.items()}
@@ -277,9 +314,13 @@ class GarminClient:
         return out
 
     def fetch_performance(self, date_str):
-        """VO2max, fitness age, race predictions, endurance, acclimation."""
+        """Performance snapshot: VO2max, fitness age, race predictions,
+        endurance, acclimation, running tolerance, hill score, lactate
+        threshold, body weight. All from today's values (not backfilled)."""
+        import datetime as _dt
         self._fetch_errors = 0
         api = self.api
+        week_ago = (_dt.date.fromisoformat(date_str) - _dt.timedelta(days=7)).isoformat()
         tstat = self._safe(lambda: api.get_training_status(date_str), {}) or {}
         v2 = tstat.get("mostRecentVO2Max") or {}
         generic = v2.get("generic") or {}
@@ -290,16 +331,35 @@ class GarminClient:
             mg = (maxmet[0] or {}).get("generic", {}) or {}
         race = self._safe(lambda: api.get_race_predictions(), {}) or {}
         endur = self._safe(lambda: api.get_endurance_score(date_str), {}) or {}
+        # v3.9: fitness age has a dedicated endpoint (the max_metrics path above
+        # is empty on this watch); running tolerance, hill score, lactate
+        # threshold, and body weight each add one call.
+        fitage = self._safe(lambda: api.get_fitnessage_data(date_str), {}) or {}
+        rtol = self._safe(lambda: api.get_running_tolerance(week_ago, date_str), []) or []
+        rtol_latest = rtol[-1] if isinstance(rtol, list) and rtol else {}
+        hill = self._safe(lambda: api.get_hill_score(week_ago, date_str), {}) or {}
+        lt = self._safe(lambda: api.get_lactate_threshold(latest=True), {}) or {}
+        lt_shr = (lt or {}).get("speed_and_heart_rate") or {}
+        lt_pow = (lt or {}).get("power") or {}
+        body = self._safe(lambda: api.get_body_composition(week_ago, date_str), {}) or {}
+        body_avg = (body or {}).get("totalAverage") or {}
         return {
             "vo2max": generic.get("vo2MaxValue") or mg.get("vo2MaxValue"),
             "vo2max_cycling": (v2.get("cycling") or {}).get("vo2MaxValue"),
-            "fitness_age": generic.get("fitnessAge") or mg.get("fitnessAge"),
+            "fitness_age": (fitage.get("fitnessAge")
+                            or generic.get("fitnessAge") or mg.get("fitnessAge")),
             "race_5k": race.get("time5K"), "race_10k": race.get("time10K"),
             "race_hm": race.get("timeHalfMarathon"), "race_marathon": race.get("timeMarathon"),
             "endurance_score": endur.get("overallScore"),
             "endurance_class": endur.get("classification"),
             "heat_acclimation": accl.get("heatAcclimationPercentage"),
             "altitude_acclimation": accl.get("altitudeAcclimation"),
+            "running_tolerance_load": rtol_latest.get("totalImpactLoad"),
+            "running_tolerance_ceiling": rtol_latest.get("tolerance"),
+            "hill_score": hill.get("maxScore"),
+            "lt_hr": lt_shr.get("heartRate"),
+            "lt_power": lt_pow.get("functionalThresholdPower"),
+            "body_weight_g": body_avg.get("weight"),
         }
 
     def fetch_personal_records(self):
@@ -345,6 +405,9 @@ class GarminClient:
         # Strength workouts carry exercises/sets/reps/weight here; other
         # activity types simply return nothing (absorbed by _safe).
         sets = self._safe(lambda: api.get_activity_exercise_sets(activity_id), None)
+        # v3.9: running dynamics + power live in the activity summaryDTO (a
+        # separate call from the details above); None for activities without them.
+        act = self._safe(lambda: api.get_activity(str(activity_id)), {}) or {}
         summary = {k: geo.get(k) for k in
                    ("minLat", "maxLat", "minLon", "maxLon", "startPoint", "endPoint")}
         return {
@@ -354,4 +417,5 @@ class GarminClient:
             "weather": weather,
             "summary": summary,
             "exercise_sets": (sets or {}).get("exerciseSets") if isinstance(sets, dict) else None,
+            "dynamics": _running_dynamics(act.get("summaryDTO") or {}),
         }

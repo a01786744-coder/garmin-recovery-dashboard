@@ -3,6 +3,42 @@
 All notable changes to the Garmin Recovery Dashboard. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/). Dates are YYYY-MM-DD.
 
+## [3.9.0] — 2026-07-15
+
+Full Forerunner 970 data integration: everything the watch records is now
+stored and shown. Field names were confirmed against real account data.
+
+### Added
+- **Running dynamics & power** on every run detail — cadence, stride length,
+  ground contact time, vertical oscillation, vertical ratio, average/normalized/
+  max running power, and elevation gain.
+- **Weather conditions** row on activity details (condition, temp, feels-like,
+  humidity, wind) — this was already cached but never shown.
+- **Recovery time** (hours until fully recovered) on the Today tab.
+- **Blood oxygen (SpO2)** — average, sleep average, and daily low — on the Today
+  and Sleep tabs.
+- **Skin temperature** deviation from baseline on the Today and Sleep tabs.
+- **Naps** surfaced on the Sleep tab when recorded.
+- **Fitness age** restored with a working data source (`get_fitnessage_data`);
+  the old source was empty on this watch, which is why it showed blank.
+- **Hill score**, **body weight**, **altitude acclimation**, and **lactate
+  threshold** (threshold HR + running FTP) tiles on Trends.
+- **Running tolerance** card on Trends — this week's impact load vs your
+  tolerance ceiling.
+- **HRV status** badge (Balanced / Unbalanced / …) on the HRV trend card.
+- **All-day heart-rate curve** in the Resting HR detail panel.
+
+### Technical
+- New daily columns (recovery time, naps, skin temp, SpO2, hydration) and perf
+  columns (running tolerance, hill score, lactate threshold, body weight);
+  activity detail gains a running-dynamics blob. All migrated in place.
+- Recovery time, naps, and skin temp are parsed from payloads already fetched
+  (zero extra API calls); naps + skin temp also backfill history
+  (`BASELINE_FETCH_VERSION=6`). SpO2, hydration, running tolerance, hill score,
+  lactate threshold, fitness age, and body weight add one call each, today only.
+- `perf_metrics` upserts now COALESCE so a failed sub-fetch never wipes a stored
+  value. 181 backend tests.
+
 ## [3.8.0] — 2026-07-12
 
 ### Added
