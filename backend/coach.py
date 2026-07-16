@@ -11,10 +11,22 @@ Privacy contract (opt-in feature, off by default):
 """
 import json
 import logging
+import re
 
 import backend.db as db
 
 log = logging.getLogger("coach")
+
+# The model occasionally double-escapes inside the JSON string, which leaves
+# literal "\n" / "—" artifacts in the decoded text. Fix them up.
+_UNICODE_ESC = re.compile(r"\\u([0-9a-fA-F]{4})")
+
+
+def clean_text(text):
+    if not text:
+        return text
+    text = _UNICODE_ESC.sub(lambda m: chr(int(m.group(1), 16)), text)
+    return text.replace("\\n", "\n").replace("\\t", " ")
 
 CONTEXT_DAYS = 30
 CHAT_HISTORY_TURNS = 20
@@ -110,14 +122,27 @@ WORKOUT_SCHEMA = {
     "additionalProperties": False,
 }
 
+_HIGHLIGHT = {
+    "type": "object",
+    "properties": {
+        "label": {"type": "string", "description": "short metric name, e.g. 'ACWR'"},
+        "value": {"type": "string", "description": "the number/short value, e.g. '1.4'"},
+        "tone": {"type": "string", "enum": ["good", "warn", "bad", "neutral"]},
+    },
+    "required": ["label", "value", "tone"],
+    "additionalProperties": False,
+}
+
 RESPONSE_SCHEMA = {
     "type": "object",
     "properties": {
         "reply": {"type": "string",
                   "description": "the coach's message to the athlete"},
+        "highlights": {"type": "array", "items": _HIGHLIGHT,
+                       "description": "3-6 key numbers behind the reply"},
         "workout": {"anyOf": [WORKOUT_SCHEMA, {"type": "null"}]},
     },
-    "required": ["reply", "workout"],
+    "required": ["reply", "highlights", "workout"],
     "additionalProperties": False,
 }
 
@@ -140,8 +165,14 @@ otherwise set workout to null. Workouts are for RUNNING only (outdoor or treadmi
 - Workout structure: warmup and cooldown always; intervals with explicit pace (sec/km, \
 target_min = fastest, target_max = slowest) or heart_rate (bpm) targets; recovery steps \
 between repeats. Keep it executable on a Garmin watch.
-- Tone: knowledgeable, direct, encouraging. A couple of short paragraphs at most. Plain text \
-only (no markdown headers)."""
+- Tone: knowledgeable, direct, encouraging.
+- Formatting: make the reply scannable, never a wall of text. Short paragraphs (2-3 sentences), \
+blank line between them. Use "- " bullet lists for enumerations (causes, recommendations, the \
+week's plan). Use **bold** for the few numbers or phrases that matter most. No headers, no \
+tables, no other markdown.
+- highlights: 3-6 chips with the key numbers behind your reply (label + value + tone: good = \
+positive signal, warn = caution, bad = negative, neutral = informational). Example: \
+{"label": "ACWR", "value": "1.4", "tone": "warn"}."""
 
 
 def is_configured(settings):
@@ -154,7 +185,7 @@ def _call_claude(settings, messages):
     import anthropic
     client = anthropic.Anthropic(api_key=settings["anthropic_api_key"])
     resp = client.messages.create(
-        model=settings.get("coach_model") or "claude-opus-4-8",
+        model=settings.get("coach_model") or "claude-sonnet-5",
         max_tokens=4000,
         thinking={"type": "adaptive"},
         system=[{"type": "text", "text": SYSTEM_PROMPT,
@@ -163,9 +194,13 @@ def _call_claude(settings, messages):
         output_config={"format": {"type": "json_schema", "schema": RESPONSE_SCHEMA}},
     )
     if resp.stop_reason == "refusal":
-        return {"reply": "The coach couldn't answer that request.", "workout": None}
+        return {"reply": "The coach couldn't answer that request.",
+                "highlights": [], "workout": None}
     text = next(b.text for b in resp.content if b.type == "text")
-    return json.loads(text)
+    data = json.loads(text)
+    data["reply"] = clean_text(data.get("reply") or "")
+    data.setdefault("highlights", [])
+    return data
 
 
 def _context_block(db_path, today_str):
@@ -185,7 +220,8 @@ def daily_brief(db_path, settings, today_str, force=False):
                 "stands out, and what today's training should look like. If a "
                 "structured run makes sense today, include it as the workout.")
     data = _call_claude(settings, [{"role": "user", "content": prompt}])
-    db.upsert_coach_brief(db_path, today_str, data["reply"], data.get("workout"))
+    db.upsert_coach_brief(db_path, today_str, data["reply"], data.get("workout"),
+                          data.get("highlights"))
     return {**db.get_coach_brief(db_path, today_str), "cached": False}
 
 
@@ -205,5 +241,6 @@ def chat(db_path, settings, message, today_str):
     messages.append({"role": "user", "content": message})
     data = _call_claude(settings, messages)
     db.add_coach_chat(db_path, "user", message, None)
-    db.add_coach_chat(db_path, "assistant", data["reply"], data.get("workout"))
+    db.add_coach_chat(db_path, "assistant", data["reply"], data.get("workout"),
+                      data.get("highlights"))
     return data

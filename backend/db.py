@@ -130,6 +130,9 @@ def init_db(path):
                 design_json TEXT, garmin_workout_id INTEGER, schedule_json TEXT,
                 status TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )""")
+        # v4.1: highlight chips alongside brief/chat text.
+        _ensure_columns(c, "coach_briefs", [("highlights_json", "TEXT")])
+        _ensure_columns(c, "coach_chat", [("highlights_json", "TEXT")])
 
 
 _ALL_TABLES = ["daily_metrics", "activities", "sync_log", "daily_intraday",
@@ -474,13 +477,16 @@ def upsert_activity_detail(path, activity_id, polyline_json=None, splits_json=No
 
 # --- v4.0: AI coach ---
 
-def upsert_coach_brief(path, date, text, workout):
+def upsert_coach_brief(path, date, text, workout, highlights=None):
     with _conn(path) as c:
-        c.execute("INSERT INTO coach_briefs (date, text, workout_json, created_at) "
-                  "VALUES (?,?,?, CURRENT_TIMESTAMP) ON CONFLICT(date) DO UPDATE SET "
+        c.execute("INSERT INTO coach_briefs (date, text, workout_json, highlights_json, "
+                  "created_at) VALUES (?,?,?,?, CURRENT_TIMESTAMP) "
+                  "ON CONFLICT(date) DO UPDATE SET "
                   "text=excluded.text, workout_json=excluded.workout_json, "
+                  "highlights_json=excluded.highlights_json, "
                   "created_at=CURRENT_TIMESTAMP",
-                  (date, text, json.dumps(workout) if workout else None))
+                  (date, text, json.dumps(workout) if workout else None,
+                   json.dumps(highlights) if highlights else None))
 
 
 def get_coach_brief(path, date):
@@ -490,13 +496,16 @@ def get_coach_brief(path, date):
             return None
         return {"date": row["date"], "text": row["text"],
                 "workout": json.loads(row["workout_json"]) if row["workout_json"] else None,
+                "highlights": json.loads(row["highlights_json"]) if row["highlights_json"] else [],
                 "created_at": row["created_at"]}
 
 
-def add_coach_chat(path, role, content, workout):
+def add_coach_chat(path, role, content, workout, highlights=None):
     with _conn(path) as c:
-        c.execute("INSERT INTO coach_chat (role, content, workout_json) VALUES (?,?,?)",
-                  (role, content, json.dumps(workout) if workout else None))
+        c.execute("INSERT INTO coach_chat (role, content, workout_json, highlights_json) "
+                  "VALUES (?,?,?,?)",
+                  (role, content, json.dumps(workout) if workout else None,
+                   json.dumps(highlights) if highlights else None))
 
 
 def get_coach_chat(path, limit):
@@ -506,6 +515,8 @@ def get_coach_chat(path, limit):
                          (limit,)).fetchall()
         return [{"id": r["id"], "role": r["role"], "content": r["content"],
                  "workout": json.loads(r["workout_json"]) if r["workout_json"] else None,
+                 "highlights": (json.loads(r["highlights_json"])
+                                if r["highlights_json"] else []),
                  "created_at": r["created_at"]}
                 for r in reversed(rows)]
 

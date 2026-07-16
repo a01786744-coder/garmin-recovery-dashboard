@@ -109,6 +109,51 @@ def test_chat_sends_context_and_history(tmp_path):
     assert msgs[-1]["content"] == "and now?"
 
 
+# --- v4.1: escape-artifact sanitizer + highlights ---
+
+def test_clean_text_fixes_escape_artifacts():
+    raw = "load is up \\u2014 two hard days\\nRest tomorrow \\u2013 easy jog"
+    assert coach.clean_text(raw) == "load is up — two hard days\nRest tomorrow – easy jog"
+
+
+def test_clean_text_leaves_normal_text_alone():
+    s = "Recovery **88** — nice rebound.\n\n- easy run\n- sleep early"
+    assert coach.clean_text(s) == s
+
+
+def test_call_claude_sanitizes_and_defaults_highlights(tmp_path):
+    import json as _json
+    fake_resp = MagicMock()
+    fake_resp.stop_reason = "end_turn"
+    block = MagicMock(); block.type = "text"
+    block.text = _json.dumps({"reply": "ACWR high \\u2014 back off", "workout": None})
+    fake_resp.content = [block]
+    with patch("anthropic.Anthropic") as A:
+        A.return_value.messages.create.return_value = fake_resp
+        out = coach._call_claude(_settings(), [{"role": "user", "content": "x"}])
+    assert out["reply"] == "ACWR high — back off"
+    assert out["highlights"] == []
+
+
+def test_brief_and_chat_persist_highlights(tmp_path):
+    p = tmp_path / "d.db"
+    _seed(p)
+    hl = [{"label": "ACWR", "value": "1.4", "tone": "warn"},
+          {"label": "Recovery", "value": "88", "tone": "good"}]
+    with patch.object(coach, "_call_claude",
+                      return_value={"reply": "r", "workout": None, "highlights": hl}):
+        brief = coach.daily_brief(p, _settings(), "2026-07-15")
+        coach.chat(p, _settings(), "why?", "2026-07-15")
+    assert brief["highlights"][0]["label"] == "ACWR"
+    assert db.get_coach_brief(p, "2026-07-15")["highlights"] == hl
+    assert db.get_coach_chat(p, 10)[-1]["highlights"] == hl
+
+
+def test_default_model_is_sonnet5():
+    from backend.settings import DEFAULTS
+    assert DEFAULTS["coach_model"] == "claude-sonnet-5"
+
+
 # --- workout design -> Garmin conversion ---
 
 DESIGN = {
@@ -245,4 +290,4 @@ def test_coach_status_configured(tmp_path):
         {"coach_enabled": True, "anthropic_api_key": "sk-test"}))
     app = create_app(p, client_factory=lambda: MagicMock(), tokenstore=tmp_path / "g")
     st = app.test_client().get("/api/coach/status").get_json()
-    assert st["configured"] is True and st["model"] == "claude-opus-4-8"
+    assert st["configured"] is True and st["model"] == "claude-sonnet-5"

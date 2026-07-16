@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import Card from "../components/ui/Card.jsx";
 import SectionTitle from "../components/ui/SectionTitle.jsx";
 import WorkoutCard from "../components/WorkoutCard.jsx";
+import CoachText, { Highlights } from "../components/CoachText.jsx";
 import {
   getCoachStatus, getCoachBrief, getCoachChat, postCoachChat, clearCoachChat,
   getCoachWorkouts, deleteCoachWorkout,
@@ -57,14 +58,13 @@ function Brief() {
           Couldn't reach the coach ({brief.error}). Check your API key in Settings.
         </p>
       ) : (
-        <>
-          <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-neutral-200">
-            {brief?.text}
-          </p>
+        <div className="mt-2">
+          <Highlights items={brief?.highlights} />
+          <CoachText text={brief?.text} />
           {brief?.workout && (
             <div className="mt-3"><WorkoutCard workout={brief.workout} /></div>
           )}
-        </>
+        </div>
       )}
     </Card>
   );
@@ -92,7 +92,8 @@ function Chat() {
       const res = await postCoachChat(text);
       setMessages((m) => [...m, res.error
         ? { role: "assistant", content: `Something went wrong (${res.error}).` }
-        : { role: "assistant", content: res.reply, workout: res.workout }]);
+        : { role: "assistant", content: res.reply, workout: res.workout,
+            highlights: res.highlights }]);
     } catch {
       setMessages((m) => [...m, { role: "assistant", content: "Network error — try again." }]);
     }
@@ -136,8 +137,9 @@ function Chat() {
               ? "max-w-[85%] rounded-2xl rounded-br-sm bg-emerald-500/15 px-3.5 py-2 text-sm text-neutral-100"
               : "max-w-[95%]"}>
               {m.role === "assistant" ? (
-                <div className="rounded-2xl rounded-bl-sm bg-neutral-950/60 px-3.5 py-2 text-sm leading-relaxed text-neutral-200 whitespace-pre-wrap">
-                  {m.content}
+                <div className="rounded-2xl rounded-bl-sm bg-neutral-950/60 px-3.5 py-2.5">
+                  <Highlights items={m.highlights} />
+                  <CoachText text={m.content} />
                 </div>
               ) : m.content}
               {m.workout && <div className="mt-2"><WorkoutCard workout={m.workout} /></div>}

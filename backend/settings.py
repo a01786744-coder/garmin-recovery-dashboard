@@ -24,7 +24,7 @@ DEFAULTS = {
     # never sent anywhere except to Anthropic's API over TLS.
     "coach_enabled": False,
     "anthropic_api_key": "",
-    "coach_model": "claude-opus-4-8",
+    "coach_model": "claude-sonnet-5",
 }
 
 

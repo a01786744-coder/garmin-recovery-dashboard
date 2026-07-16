@@ -3,6 +3,22 @@
 All notable changes to the Garmin Recovery Dashboard. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/). Dates are YYYY-MM-DD.
 
+## [4.1.0] — 2026-07-16
+
+### Changed
+- **Coach now runs on Claude Sonnet 5** by default (~2.5× cheaper than Opus,
+  near-equal coaching quality). Existing installs are switched automatically;
+  the model remains configurable via `coach_model` in settings.
+- **Much better coach responses on screen.** Replies now render with
+  structure — short paragraphs, bullet lists, bold key numbers — instead of a
+  wall of plain text, and every brief/chat answer opens with **highlight
+  chips**: the key metrics behind the advice (e.g. `ACWR 1.4` amber,
+  `Recovery 88` green, `Acute load 500` red).
+
+### Fixed
+- Escape artifacts (`\n`, `—`) occasionally leaking into coach replies —
+  responses are now sanitized before display and storage.
+
 ## [4.0.0] — 2026-07-15
 
 **AI Coach** — a personal running coach powered by Claude (Anthropic API),
