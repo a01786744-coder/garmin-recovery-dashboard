@@ -60,7 +60,11 @@ def load_settings(path):
     raw = {}
     if p.is_file():
         try:
-            raw = json.loads(p.read_text())
+            # utf-8-sig tolerates a leading BOM: a settings file hand-edited or
+            # rewritten by an editor/PowerShell that adds one must never fail to
+            # parse and fall back to defaults — that would wipe real values
+            # (API key, PIN, phone access) on the next save.
+            raw = json.loads(p.read_text(encoding="utf-8-sig"))
         except (OSError, ValueError):
             raw = {}
     return _validate(raw)

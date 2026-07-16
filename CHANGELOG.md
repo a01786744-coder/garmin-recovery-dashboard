@@ -3,6 +3,15 @@
 All notable changes to the Garmin Recovery Dashboard. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/). Dates are YYYY-MM-DD.
 
+## [4.1.1] — 2026-07-16
+
+### Fixed
+- **Settings file is now read BOM-tolerantly.** A settings.json that picked up
+  a UTF-8 byte-order mark (e.g. from an external editor or PowerShell) could
+  fail to parse and silently fall back to defaults — which, on the next save,
+  overwrote real values (API key, PIN, phone access). Loading now strips a
+  leading BOM, so a hand-edited or re-encoded file can never wipe settings.
+
 ## [4.1.0] — 2026-07-16
 
 ### Changed

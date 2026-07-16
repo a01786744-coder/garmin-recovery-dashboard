@@ -44,6 +44,21 @@ def test_corrupt_file_falls_back_to_defaults(tmp_path):
     assert st.load_settings(p) == st.DEFAULTS
 
 
+def test_bom_prefixed_file_still_parses(tmp_path):
+    # A UTF-8 BOM (e.g. from PowerShell Out-File -Encoding utf8) must NOT make
+    # the file unparseable — otherwise a save would wipe real values.
+    p = tmp_path / "settings.json"
+    body = '{"phone_access": true, "access_pin": "2262", "anthropic_api_key": "sk-x"}'
+    p.write_bytes(b"\xef\xbb\xbf" + body.encode("utf-8"))
+    s = st.load_settings(p)
+    assert s["phone_access"] is True
+    assert s["access_pin"] == "2262"
+    assert s["anthropic_api_key"] == "sk-x"
+    # And a subsequent save preserves them rather than resetting to defaults.
+    merged = st.save_settings(p, {"units": "imperial"})
+    assert merged["access_pin"] == "2262" and merged["anthropic_api_key"] == "sk-x"
+
+
 # --- API endpoints ---
 
 def _client(tmp_path):
