@@ -3,6 +3,16 @@
 All notable changes to the Garmin Recovery Dashboard. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/). Dates are YYYY-MM-DD.
 
+## [4.1.2] — 2026-07-16
+
+### Fixed
+- **Coach failed with a ModuleNotFoundError on the packaged app.** A CI build
+  silently dropped the bundled Claude SDK and its native dependencies
+  (pydantic/pydantic_core/jiter), so the coach couldn't run even with a valid
+  key. The freeze step now collects those packages explicitly and **verifies
+  the bundle contains them, failing the build if any are missing** — a
+  coach-less binary can no longer be released.
+
 ## [4.1.1] — 2026-07-16
 
 ### Fixed
