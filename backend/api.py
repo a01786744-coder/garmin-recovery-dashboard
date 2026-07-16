@@ -264,6 +264,109 @@ def create_app(db_path=cfg.DB_PATH, client_factory=None,
         prof = caps.load_profile(Path(db_path).parent / "capabilities.json")
         return jsonify(prof or caps.default_profile())
 
+    # ---- v4.0: AI coach ----------------------------------------------------
+
+    def _coach_settings():
+        from backend import settings as st
+        return st.load_settings(Path(db_path).parent / "settings.json")
+
+    def _today_str():
+        import datetime as _dt
+        return _dt.date.today().isoformat()
+
+    @app.get("/api/coach/status")
+    def coach_status():
+        from backend import coach
+        s = _coach_settings()
+        return jsonify({"enabled": bool(s.get("coach_enabled")),
+                        "configured": coach.is_configured(s),
+                        "model": s.get("coach_model")})
+
+    @app.get("/api/coach/brief")
+    def coach_brief():
+        from backend import coach
+        s = _coach_settings()
+        if not coach.is_configured(s):
+            return jsonify({"error": "not_configured"}), 200
+        force = request.args.get("force") == "1"
+        try:
+            return jsonify(coach.daily_brief(db_path, s, _today_str(), force=force))
+        except Exception as e:
+            log.warning("coach brief failed: %s", type(e).__name__)
+            return jsonify({"error": type(e).__name__}), 200
+
+    @app.get("/api/coach/chat")
+    def coach_chat_history():
+        return jsonify({"messages": db.get_coach_chat(db_path, 50)})
+
+    @app.post("/api/coach/chat")
+    def coach_chat():
+        from backend import coach
+        s = _coach_settings()
+        if not coach.is_configured(s):
+            return jsonify({"error": "not_configured"}), 200
+        message = str((request.get_json(silent=True) or {}).get("message") or "").strip()
+        if not message:
+            return jsonify({"error": "empty message"}), 400
+        try:
+            return jsonify(coach.chat(db_path, s, message, _today_str()))
+        except Exception as e:
+            log.warning("coach chat failed: %s", type(e).__name__)
+            return jsonify({"error": type(e).__name__}), 200
+
+    @app.delete("/api/coach/chat")
+    def coach_chat_clear():
+        db.clear_coach_chat(db_path)
+        return jsonify({"ok": True})
+
+    @app.get("/api/coach/workouts")
+    def coach_workouts():
+        return jsonify({"workouts": db.list_coach_workouts(db_path)})
+
+    @app.post("/api/coach/workout/send")
+    def coach_workout_send():
+        # The ONLY write to the user's Garmin account. Reached exclusively via
+        # the explicit "Send to watch" confirmation in the UI.
+        from backend import workouts as wk
+        body = request.get_json(silent=True) or {}
+        design, date = body.get("design"), body.get("date")
+        if not design or not isinstance(design.get("steps"), list):
+            return jsonify({"error": "invalid workout design"}), 400
+        if date and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(date)):
+            return jsonify({"error": "bad date"}), 400
+        if client_factory is None:
+            return jsonify({"error": "no client"}), 503
+        client = client_factory()
+        try:
+            client.login()
+            result = client.push_running_workout(wk.design_to_garmin(design), date)
+        except Exception as e:
+            log.warning("workout push failed: %s", type(e).__name__)
+            return jsonify({"error": type(e).__name__}), 200
+        row_id = db.add_coach_workout(
+            db_path, design.get("name") or "Coach workout", date, design,
+            result.get("workout_id"), result.get("schedule"),
+            "scheduled" if date else "uploaded")
+        return jsonify({"ok": True, "id": row_id,
+                        "garmin_workout_id": result.get("workout_id")})
+
+    @app.delete("/api/coach/workout/<int:row_id>")
+    def coach_workout_delete(row_id):
+        w = db.get_coach_workout(db_path, row_id)
+        if not w:
+            return jsonify({"error": "not found"}), 404
+        if client_factory is not None and w.get("garmin_workout_id"):
+            client = client_factory()
+            try:
+                client.login()
+                schedule_id = ((w.get("schedule") or {}).get("workoutScheduleId")
+                               or (w.get("schedule") or {}).get("id"))
+                client.remove_workout(w["garmin_workout_id"], schedule_id)
+            except Exception as e:
+                log.warning("workout removal failed: %s", type(e).__name__)
+        db.update_coach_workout_status(db_path, row_id, "removed")
+        return jsonify({"ok": True})
+
     @app.get("/api/sync-status")
     def sync_status():
         # data_dir included as a support diagnostic: makes "which database is

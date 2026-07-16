@@ -6,7 +6,7 @@ a hand-edited or stale file can never put the app into a bad state.
 import json
 from pathlib import Path
 
-TAB_KEYS = ["overview", "sleep", "training", "activities", "trends"]
+TAB_KEYS = ["overview", "sleep", "training", "activities", "trends", "coach"]
 
 DEFAULTS = {
     "units": "metric",            # "metric" | "imperial"
@@ -19,6 +19,12 @@ DEFAULTS = {
     "access_pin": "",             # required for any non-loopback API access
     "start_at_login": False,      # Electron login item (applied by the shell)
     "date_style": "month",        # chart dates: "month" (Jul 4) | "number" (07-04)
+    # v4.0 AI coach. The API key is stored ONLY here (like the PIN): local
+    # file, never logged (RedactingFilter also scrubs token-shaped strings),
+    # never sent anywhere except to Anthropic's API over TLS.
+    "coach_enabled": False,
+    "anthropic_api_key": "",
+    "coach_model": "claude-opus-4-8",
 }
 
 
@@ -43,6 +49,9 @@ def _validate(raw):
     s["access_pin"] = str(s.get("access_pin") or "")
     s["start_at_login"] = bool(s["start_at_login"])
     s["date_style"] = s["date_style"] if s["date_style"] in ("month", "number") else "month"
+    s["coach_enabled"] = bool(s["coach_enabled"])
+    s["anthropic_api_key"] = str(s.get("anthropic_api_key") or "")
+    s["coach_model"] = str(s.get("coach_model") or "claude-opus-4-8")
     return s
 
 

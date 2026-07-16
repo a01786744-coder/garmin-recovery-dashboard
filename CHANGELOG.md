@@ -3,6 +3,44 @@
 All notable changes to the Garmin Recovery Dashboard. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/). Dates are YYYY-MM-DD.
 
+## [4.0.0] — 2026-07-15
+
+**AI Coach** — a personal running coach powered by Claude (Anthropic API),
+with real structured workouts pushed to your Garmin watch.
+
+### Added
+- **Coach tab**: a daily morning brief written from your actual data (recovery,
+  HRV, sleep debt, running tolerance, journal), plus a chat where you can ask
+  anything — "should I run today?", "design me an interval session", "why was
+  my recovery low this week?".
+- **Workouts on your watch**: when the coach proposes a run it appears as a
+  structured workout card — warmup/intervals/recovery/cooldown with explicit
+  pace ranges (min/km) and heart-rate bands. After you review and confirm,
+  it's uploaded to Garmin Connect and scheduled on your calendar; the watch
+  guides you through it with pace/HR alerts like any coach-built workout.
+  Pushed workouts are listed in the app and can be removed (unscheduled +
+  deleted from Garmin) with one click.
+- **Settings → AI Coach**: opt-in toggle + Anthropic API key (stored only in
+  the local settings file, like the access PIN; never logged). Model:
+  Claude Opus 4.8.
+
+### Privacy
+- Off by default. When enabled, the only data sent to Anthropic is the coach
+  context: recent daily metrics, activities, journal tags, and performance
+  numbers — never Garmin credentials, tokens, or your email. Everything else
+  in the app remains fully local.
+- Workout upload is the app's first and only write to your Garmin account,
+  and it happens exclusively behind the explicit "Send to watch → Confirm"
+  flow.
+
+### Technical
+- `backend/coach.py` (context builder, cached daily brief, chat with strict
+  JSON-schema responses), `backend/workouts.py` (design → Garmin structured
+  workout: sec/km → m/s speed zones, custom bpm ranges, repeat groups),
+  `push_running_workout`/`remove_workout` on the Garmin client, three new DB
+  tables (briefs, chat, pushed workouts). The daily brief is cached per date —
+  one Claude call a day. 196 backend tests.
+
 ## [3.9.0] — 2026-07-15
 
 Full Forerunner 970 data integration: everything the watch records is now

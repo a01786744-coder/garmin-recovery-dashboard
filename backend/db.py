@@ -113,10 +113,28 @@ def init_db(path):
         # v3.9: running dynamics + power snapshot for the activity.
         _ensure_columns(c, "activity_detail",
                         [("exercise_sets_json", "TEXT"), ("dynamics_json", "TEXT")])
+        # v4.0: AI coach — cached daily briefs, chat history, pushed workouts.
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS coach_briefs (
+                date TEXT PRIMARY KEY, text TEXT, workout_json TEXT,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )""")
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS coach_chat (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, role TEXT, content TEXT,
+                workout_json TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )""")
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS coach_workouts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, date TEXT,
+                design_json TEXT, garmin_workout_id INTEGER, schedule_json TEXT,
+                status TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )""")
 
 
 _ALL_TABLES = ["daily_metrics", "activities", "sync_log", "daily_intraday",
-               "perf_metrics", "personal_records", "activity_detail"]
+               "perf_metrics", "personal_records", "activity_detail",
+               "coach_briefs", "coach_chat", "coach_workouts"]
 
 
 def clear_all_data(path):
@@ -452,6 +470,85 @@ def upsert_activity_detail(path, activity_id, polyline_json=None, splits_json=No
             dynamics_json=excluded.dynamics_json,
             fetched_at=excluded.fetched_at""",
             [activity_id] + blobs + [_dt.datetime.now().isoformat()])
+
+
+# --- v4.0: AI coach ---
+
+def upsert_coach_brief(path, date, text, workout):
+    with _conn(path) as c:
+        c.execute("INSERT INTO coach_briefs (date, text, workout_json, created_at) "
+                  "VALUES (?,?,?, CURRENT_TIMESTAMP) ON CONFLICT(date) DO UPDATE SET "
+                  "text=excluded.text, workout_json=excluded.workout_json, "
+                  "created_at=CURRENT_TIMESTAMP",
+                  (date, text, json.dumps(workout) if workout else None))
+
+
+def get_coach_brief(path, date):
+    with _conn(path) as c:
+        row = c.execute("SELECT * FROM coach_briefs WHERE date=?", (date,)).fetchone()
+        if not row:
+            return None
+        return {"date": row["date"], "text": row["text"],
+                "workout": json.loads(row["workout_json"]) if row["workout_json"] else None,
+                "created_at": row["created_at"]}
+
+
+def add_coach_chat(path, role, content, workout):
+    with _conn(path) as c:
+        c.execute("INSERT INTO coach_chat (role, content, workout_json) VALUES (?,?,?)",
+                  (role, content, json.dumps(workout) if workout else None))
+
+
+def get_coach_chat(path, limit):
+    """The most recent `limit` chat messages, oldest first."""
+    with _conn(path) as c:
+        rows = c.execute("SELECT * FROM coach_chat ORDER BY id DESC LIMIT ?",
+                         (limit,)).fetchall()
+        return [{"id": r["id"], "role": r["role"], "content": r["content"],
+                 "workout": json.loads(r["workout_json"]) if r["workout_json"] else None,
+                 "created_at": r["created_at"]}
+                for r in reversed(rows)]
+
+
+def clear_coach_chat(path):
+    with _conn(path) as c:
+        c.execute("DELETE FROM coach_chat")
+
+
+def add_coach_workout(path, name, date, design, garmin_workout_id, schedule, status):
+    with _conn(path) as c:
+        cur = c.execute(
+            "INSERT INTO coach_workouts (name, date, design_json, garmin_workout_id, "
+            "schedule_json, status) VALUES (?,?,?,?,?,?)",
+            (name, date, json.dumps(design), garmin_workout_id,
+             json.dumps(schedule) if schedule else None, status))
+        return cur.lastrowid
+
+
+def list_coach_workouts(path, limit=20):
+    with _conn(path) as c:
+        rows = c.execute("SELECT * FROM coach_workouts ORDER BY id DESC LIMIT ?",
+                         (limit,)).fetchall()
+        return [_coach_workout_row(r) for r in rows]
+
+
+def get_coach_workout(path, workout_id):
+    with _conn(path) as c:
+        row = c.execute("SELECT * FROM coach_workouts WHERE id=?", (workout_id,)).fetchone()
+        return _coach_workout_row(row) if row else None
+
+
+def _coach_workout_row(r):
+    return {"id": r["id"], "name": r["name"], "date": r["date"],
+            "design": json.loads(r["design_json"]) if r["design_json"] else None,
+            "garmin_workout_id": r["garmin_workout_id"],
+            "schedule": json.loads(r["schedule_json"]) if r["schedule_json"] else None,
+            "status": r["status"], "created_at": r["created_at"]}
+
+
+def update_coach_workout_status(path, workout_id, status):
+    with _conn(path) as c:
+        c.execute("UPDATE coach_workouts SET status=? WHERE id=?", (status, workout_id))
 
 
 def get_activity_detail(path, activity_id):

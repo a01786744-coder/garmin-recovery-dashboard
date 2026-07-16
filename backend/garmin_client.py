@@ -393,6 +393,35 @@ class GarminClient:
             "hrv": hrv.get("hrvReadings"),
         }
 
+    def push_running_workout(self, workout, date_str=None):
+        """Upload a structured running workout to Garmin Connect and (optionally)
+        schedule it on a calendar date so the watch picks it up on next sync.
+
+        This is the app's ONLY write to the user's Garmin account, and it is
+        only ever called after the user explicitly confirms in the UI. Errors
+        RAISE (not _safe) so the caller can report failure honestly."""
+        api = self.api
+        try:
+            uploaded = api.upload_running_workout(workout)
+            workout_id = (uploaded or {}).get("workoutId")
+            schedule = None
+            if workout_id and date_str:
+                schedule = api.schedule_workout(workout_id, date_str)
+            return {"workout_id": workout_id, "schedule": schedule}
+        except GarminConnectTooManyRequestsError:
+            raise GarminRateLimitError("Garmin rate limit hit (HTTP 429)")
+        except GarminConnectAuthenticationError:
+            raise GarminAuthError("Garmin authentication failed")
+
+    def remove_workout(self, workout_id, schedule_id=None):
+        """Unschedule (if scheduled) and delete a workout we previously pushed.
+        Best-effort: swallows individual failures so a half-removed workout
+        doesn't crash the API."""
+        api = self.api
+        if schedule_id:
+            self._safe(lambda: api.unschedule_workout(schedule_id), None)
+        self._safe(lambda: api.delete_workout(workout_id), None)
+
     def fetch_activity_detail(self, activity_id, maxpoly=2000):
         """Route polyline, splits, HR-zone distribution, weather for one activity."""
         self._fetch_errors = 0

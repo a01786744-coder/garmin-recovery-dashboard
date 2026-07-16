@@ -2,3 +2,4 @@ garminconnect==0.3.2
 Flask==3.0.3
 python-dotenv==1.0.1
 pytest==8.2.0
+anthropic==0.116.0

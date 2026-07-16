@@ -43,3 +43,13 @@ export const getSettings = () => j("/api/settings");
 export const postSettings = (partial) => jsonPost("/api/settings", partial);
 export const exportUrl = (fmt) => `${BASE}/api/export/${fmt}`;
 export const getInsights = () => j("/api/insights");
+
+// v4.0 AI coach
+export const getCoachStatus = () => j("/api/coach/status");
+export const getCoachBrief = (force = false) => j(`/api/coach/brief${force ? "?force=1" : ""}`);
+export const getCoachChat = () => j("/api/coach/chat");
+export const postCoachChat = (message) => jsonPost("/api/coach/chat", { message });
+export const clearCoachChat = () => j("/api/coach/chat", { method: "DELETE" });
+export const getCoachWorkouts = () => j("/api/coach/workouts");
+export const sendCoachWorkout = (design, date) => jsonPost("/api/coach/workout/send", { design, date });
+export const deleteCoachWorkout = (id) => j(`/api/coach/workout/${id}`, { method: "DELETE" });

@@ -22,6 +22,7 @@ import Sleep from "./tabs/Sleep.jsx";
 import Training from "./tabs/Training.jsx";
 import Activities from "./tabs/Activities.jsx";
 import Trends from "./tabs/Trends.jsx";
+import Coach from "./tabs/Coach.jsx";
 
 const TABS = [
   ["overview", "Overview"],
@@ -30,9 +31,10 @@ const TABS = [
   ["training", "Strain & Training"],
   ["activities", "Activities"],
   ["trends", "Trends"],
+  ["coach", "Coach"],
 ];
 
-const VIEWS = { overview: Overview, today: Today, sleep: Sleep, training: Training, activities: Activities, trends: Trends };
+const VIEWS = { overview: Overview, today: Today, sleep: Sleep, training: Training, activities: Activities, trends: Trends, coach: Coach };
 
 export default function App() {
   const [today, setToday] = useState(null);

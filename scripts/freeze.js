@@ -22,6 +22,7 @@ const args = [
   "--collect-all", "garminconnect",
   "--collect-all", "curl_cffi",
   "--collect-all", "ua_generator",
+  "--collect-all", "anthropic",   // v4.0 AI coach (Claude API client)
   "--collect-data", "certifi",
   "--collect-submodules", "backend",
   "server_main.py",

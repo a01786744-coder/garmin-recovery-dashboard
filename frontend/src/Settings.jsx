@@ -139,6 +139,29 @@ export default function Settings({ settings, onChange, onSwitchAccount, onClose 
             </p>
           </div>
 
+          {/* AI Coach */}
+          <div className="border-t border-line/10 pt-4">
+            <label className="flex items-center gap-2 text-sm text-neutral-300">
+              <input type="checkbox" checked={!!s.coach_enabled}
+                onChange={(e) => onChange({ coach_enabled: e.target.checked })}
+                className="h-4 w-4 accent-emerald-600" />
+              Enable AI Coach (Claude)
+            </label>
+            <div className="mt-2 flex items-center justify-between gap-4">
+              <div>
+                <div className="text-sm text-neutral-300">Anthropic API key</div>
+                <div className="text-[11px] text-neutral-600">from console.anthropic.com → API keys</div>
+              </div>
+              <KeyInput value={s.anthropic_api_key}
+                onCommit={(v) => onChange({ anthropic_api_key: v })} />
+            </div>
+            <p className="mt-1 text-[11px] text-neutral-600">
+              Opt-in: when enabled, your recent metrics, activities and journal are sent to
+              Anthropic's API to generate coaching — never your Garmin credentials. The key
+              is stored only on this machine. Typical usage costs $1–3/month.
+            </p>
+          </div>
+
           {/* Account */}
           <div className="border-t border-line/10 pt-4">
             {!confirmSwitch ? (
@@ -192,6 +215,20 @@ function PinInput({ value, onCommit }) {
       onBlur={() => onCommit(v.trim())}
       onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
       className="w-28 rounded-lg border border-line/10 bg-neutral-950/60 px-2 py-1 text-right text-sm text-neutral-100 outline-none focus:border-emerald-500/60"
+    />
+  );
+}
+
+// API key input: password-style so the key is never shown on screen once set.
+function KeyInput({ value, onCommit }) {
+  const [v, setV] = useState(value || "");
+  return (
+    <input
+      type="password" value={v} placeholder="sk-ant-…" autoComplete="off"
+      onChange={(e) => setV(e.target.value)}
+      onBlur={() => onCommit(v.trim())}
+      onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+      className="w-52 rounded-lg border border-line/10 bg-neutral-950/60 px-2 py-1 text-right text-sm text-neutral-100 outline-none focus:border-emerald-500/60"
     />
   );
 }
