@@ -44,6 +44,52 @@ def test_corrupt_file_falls_back_to_defaults(tmp_path):
     assert st.load_settings(p) == st.DEFAULTS
 
 
+# --- v4.2: custom tabs + tab order ---
+
+def test_custom_tabs_sanitized_and_capped(tmp_path):
+    p = tmp_path / "settings.json"
+    s = st.save_settings(p, {"custom_tabs": [
+        {"id": "c1", "name": "Morning", "icon": "🌅",
+         "layout": [{"i": "recovery", "x": 0, "y": 0, "w": 2, "h": 3},
+                    {"i": "", "x": 0, "y": 1}]},          # blank widget id dropped
+        {"id": "c1", "name": "dup"},                      # duplicate id dropped
+        {"id": "", "name": "no id"},                      # missing id dropped
+        {"id": "sleep", "name": "collides with builtin"}, # reserved id dropped
+        "not a dict",
+    ]})
+    assert [t["id"] for t in s["custom_tabs"]] == ["c1"]
+    tab = s["custom_tabs"][0]
+    assert tab["name"] == "Morning" and tab["icon"] == "🌅"
+    assert [w["i"] for w in tab["layout"]] == ["recovery"]   # blank pruned
+
+
+def test_custom_tab_grid_coords_clamped(tmp_path):
+    p = tmp_path / "settings.json"
+    s = st.save_settings(p, {"custom_tabs": [
+        {"id": "c1", "layout": [{"i": "x", "x": 99, "y": -5, "w": 99, "h": 0}]}]})
+    w = s["custom_tabs"][0]["layout"][0]
+    assert w["x"] == st.GRID_COLS - 1 and w["y"] == 0
+    assert w["w"] == st.GRID_COLS and w["h"] == 1
+
+
+def test_tab_order_and_hidden_allow_custom_ids_drop_unknown(tmp_path):
+    p = tmp_path / "settings.json"
+    s = st.save_settings(p, {
+        "custom_tabs": [{"id": "c1", "name": "Mine"}],
+        "tab_order": ["overview", "c1", "bogus", "overview", "coach"],  # dedup + prune
+        "hidden_tabs": ["trends", "c1", "ghost"],
+    })
+    assert s["tab_order"] == ["overview", "c1", "coach"]
+    assert s["hidden_tabs"] == ["trends", "c1"]
+
+
+def test_custom_tabs_count_capped(tmp_path):
+    p = tmp_path / "settings.json"
+    many = [{"id": f"c{i}", "name": str(i)} for i in range(st.MAX_CUSTOM_TABS + 5)]
+    s = st.save_settings(p, {"custom_tabs": many})
+    assert len(s["custom_tabs"]) == st.MAX_CUSTOM_TABS
+
+
 def test_bom_prefixed_file_still_parses(tmp_path):
     # A UTF-8 BOM (e.g. from PowerShell Out-File -Encoding utf8) must NOT make
     # the file unparseable — otherwise a save would wipe real values.

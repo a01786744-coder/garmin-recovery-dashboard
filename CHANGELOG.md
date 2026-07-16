@@ -3,6 +3,31 @@
 All notable changes to the Garmin Recovery Dashboard. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/). Dates are YYYY-MM-DD.
 
+## [4.2.0] — 2026-07-16
+
+**Dashboard customization** — rearrange your tabs and build your own.
+
+### Added
+- **Jiggle edit mode**: tap **✎ Edit** (or long-press the tab bar) and the tabs
+  wobble Apple-home-screen style — drag to reorder, ✕ to hide, and ＋ to create
+  a new custom tab (name + icon). Tap **Done** when finished.
+- **Custom tabs**: create several of your own named tabs. Each is a resizable
+  **snap-to grid** — drag widgets to move, drag a corner to resize, ✕ to remove.
+  Reflows to a single column on a phone.
+- **Widget inventory**: a Minecraft-creative-inventory-style palette of every
+  dashboard card (Recovery, Sleep debt, HRV trend, Weekly volume, Coach brief,
+  and ~20 more) with category filters and search. Click a slot to drop it into
+  your tab; widgets already placed are dimmed. Every widget shows your real data
+  (or an honest "No data").
+- Built-in tabs are unchanged; your layout, tab order, and hidden tabs all
+  persist locally in settings.
+
+### Technical
+- New `DashboardContext` feeds widgets everything they need; `widgets/registry`
+  is the single catalog. Grid via `react-grid-layout`, tab reorder via
+  `@dnd-kit`. `tab_order` + `custom_tabs` added to settings (validated, capped,
+  coordinate-clamped). 206 backend tests.
+
 ## [4.1.2] — 2026-07-16
 
 ### Fixed

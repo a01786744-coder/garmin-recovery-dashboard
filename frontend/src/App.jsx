@@ -23,6 +23,9 @@ import Training from "./tabs/Training.jsx";
 import Activities from "./tabs/Activities.jsx";
 import Trends from "./tabs/Trends.jsx";
 import Coach from "./tabs/Coach.jsx";
+import CustomTab from "./tabs/CustomTab.jsx";
+import TabBar from "./components/TabBar.jsx";
+import { DashboardProvider } from "./DashboardContext.jsx";
 
 const TABS = [
   ["overview", "Overview"],
@@ -56,6 +59,7 @@ export default function App() {
   const [dayPayload, setDayPayload] = useState(null);      // fetched past day
   const [pinRequired, setPinRequired] = useState(false);   // 401 from a phone
   const [detailKey, setDetailKey] = useState(null);
+  const [editTabs, setEditTabs] = useState(false);   // v4.2 jiggle/edit mode
 
   const [loginNotice, setLoginNotice] = useState(null);
 
@@ -220,14 +224,51 @@ export default function App() {
     );
   }
 
-  const hiddenTabs = settings?.hidden_tabs || [];
   const units = settings?.units || "metric";
-  const filtered = TABS.filter(([key]) => tabVisible(caps, key) && !hiddenTabs.includes(key));
-  // Never leave the user with zero tabs.
-  const shownTabs = filtered.length ? filtered : TABS.filter(([k]) => k === "overview");
-  // If the active tab got hidden (capability or user toggle), fall back to the first visible tab.
-  const activeKey = shownTabs.some(([k]) => k === tab) ? tab : shownTabs[0][0];
-  const Active = VIEWS[activeKey];
+  const hiddenTabs = settings?.hidden_tabs || [];
+  const customTabs = settings?.custom_tabs || [];
+  const order = settings?.tab_order || [];
+
+  // Merge built-in tabs (capability-gated) with user custom tabs, apply the
+  // saved order, then append anything not yet ordered (new tabs / newly
+  // unlocked capabilities). de-dup preserving order.
+  const builtin = TABS.filter(([key]) => tabVisible(caps, key))
+    .map(([key, label]) => ({ key, label, custom: false }));
+  const custom = customTabs.map((t) => ({ key: t.id, id: t.id, label: t.name, icon: t.icon,
+    custom: true, layout: t.layout || [] }));
+  const universe = [...builtin, ...custom];
+  const byKey = new Map(universe.map((t) => [t.key, t]));
+  const seenT = new Set();
+  const allTabs = [
+    ...order.map((k) => byKey.get(k)).filter(Boolean),
+    ...universe.filter((t) => !order.includes(t.key)),
+  ].filter((t) => !seenT.has(t.key) && seenT.add(t.key));
+  const visibleTabs = allTabs.filter((t) => !hiddenTabs.includes(t.key));
+  const shownTabs = visibleTabs.length ? visibleTabs : allTabs.slice(0, 1);
+  const barTabs = editTabs ? allTabs : shownTabs;    // edit mode reveals hidden tabs
+  const activeKey = shownTabs.some((t) => t.key === tab) ? tab : (shownTabs[0]?.key || "overview");
+  const activeTab = allTabs.find((t) => t.key === activeKey);
+  const Active = activeTab && !activeTab.custom ? VIEWS[activeKey] : null;
+
+  // Tab customization handlers (all persist through settings.json).
+  const reorderTabs = (keys) => saveSettings({ tab_order: keys });
+  const toggleHide = (key) => saveSettings({ hidden_tabs:
+    hiddenTabs.includes(key) ? hiddenTabs.filter((k) => k !== key) : [...hiddenTabs, key] });
+  const addCustomTab = (name, icon) => {
+    const id = "custom-" + Date.now().toString(36);
+    saveSettings({ custom_tabs: [...customTabs, { id, name, icon, layout: [] }],
+      tab_order: [...allTabs.map((t) => t.key), id] });
+    setTab(id);
+  };
+  const deleteCustomTab = (id) => {
+    saveSettings({ custom_tabs: customTabs.filter((t) => t.id !== id) });
+    if (tab === id) setTab("overview");
+  };
+  const mutateCustom = (id, fn) => saveSettings({
+    custom_tabs: customTabs.map((t) => (t.id === id ? { ...t, layout: fn(t.layout || []) } : t)) });
+  const changeCustomLayout = (id, layout) => mutateCustom(id, () => layout);
+  const addWidget = (id, item) => mutateCustom(id, (l) => [...l, item]);
+  const removeWidget = (id, widgetId) => mutateCustom(id, (l) => l.filter((w) => w.i !== widgetId));
   // When today's data hasn't synced yet we show the most recent day with data.
   const dataDate = today?.metrics?.date;
   const realToday = localToday();
@@ -317,27 +358,10 @@ export default function App() {
           </div>
         )}
 
-        <nav className="mb-6 flex gap-1 overflow-x-auto rounded-xl border border-line/5 bg-neutral-900/50 p-1">
-          {shownTabs.map(([key, label]) => (
-            <button
-              key={key}
-              onClick={() => setTab(key)}
-              className={
-                "relative whitespace-nowrap rounded-lg px-3.5 py-1.5 text-sm font-medium transition-colors " +
-                (activeKey === key ? "text-neutral-50" : "text-neutral-400 hover:text-neutral-200")
-              }
-            >
-              {activeKey === key && (
-                <motion.span
-                  layoutId="tabpill"
-                  className="absolute inset-0 rounded-lg bg-line/10"
-                  transition={{ type: "spring", stiffness: 400, damping: 32 }}
-                />
-              )}
-              <span className="relative">{label}</span>
-            </button>
-          ))}
-        </nav>
+        <TabBar tabs={barTabs} hidden={hiddenTabs} activeKey={activeKey}
+          editMode={editTabs} setEditMode={setEditTabs}
+          onSelect={setTab} onReorder={reorderTabs} onToggleHide={toggleHide}
+          onAddCustomTab={addCustomTab} onDeleteCustom={deleteCustomTab} />
 
         {onDayView && days.length > 1 && (
           <div className="mb-5 flex items-center justify-center gap-2 text-sm">
@@ -376,17 +400,29 @@ export default function App() {
             ))}
           </div>
         ) : (
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeKey}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.22, ease: "easeOut" }}
-            >
-              <Active today={viewData} trends={trends} caps={caps} units={units} onOpen={openDetail} insights={insights} />
-            </motion.div>
-          </AnimatePresence>
+          <DashboardProvider value={{
+            today: viewData, metrics: viewData?.metrics, trends, caps, units,
+            insights, perf: viewData?.perf, records: viewData?.records,
+            activities: viewData?.activities, onOpen: openDetail,
+          }}>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeKey}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.22, ease: "easeOut" }}
+              >
+                {activeTab?.custom ? (
+                  <CustomTab tab={activeTab} editMode={editTabs}
+                    onChangeLayout={changeCustomLayout}
+                    onAddWidget={addWidget} onRemoveWidget={removeWidget} />
+                ) : (
+                  <Active today={viewData} trends={trends} caps={caps} units={units} onOpen={openDetail} insights={insights} />
+                )}
+              </motion.div>
+            </AnimatePresence>
+          </DashboardProvider>
         )}
 
         <footer className="mt-10 text-center text-[10px] text-neutral-600">
