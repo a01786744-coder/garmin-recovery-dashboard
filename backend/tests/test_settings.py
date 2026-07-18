@@ -83,6 +83,16 @@ def test_tab_order_and_hidden_allow_custom_ids_drop_unknown(tmp_path):
     assert s["hidden_tabs"] == ["trends", "c1"]
 
 
+def test_tab_order_keeps_every_builtin_tab(tmp_path):
+    # Regression: "today" was missing from TAB_KEYS, so validation silently
+    # stripped it from tab_order and the Today tab jumped to the end of the bar.
+    p = tmp_path / "settings.json"
+    full = ["overview", "today", "sleep", "training", "activities", "trends", "coach"]
+    s = st.save_settings(p, {"tab_order": full, "hidden_tabs": ["today"]})
+    assert s["tab_order"] == full
+    assert s["hidden_tabs"] == ["today"]
+
+
 def test_custom_tabs_count_capped(tmp_path):
     p = tmp_path / "settings.json"
     many = [{"id": f"c{i}", "name": str(i)} for i in range(st.MAX_CUSTOM_TABS + 5)]

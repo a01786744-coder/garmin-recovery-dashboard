@@ -3,6 +3,13 @@
 All notable changes to the Garmin Recovery Dashboard. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/). Dates are YYYY-MM-DD.
 
+## [4.2.1] — 2026-07-17
+
+### Fixed
+- **The Today tab no longer jumps to the end of the tab bar** after customizing
+  tabs. The backend's list of built-in tab keys predated the Today tab, so
+  saved tab orders silently dropped it (and Today could never be hidden).
+
 ## [4.2.0] — 2026-07-16
 
 **Dashboard customization** — rearrange your tabs and build your own.
