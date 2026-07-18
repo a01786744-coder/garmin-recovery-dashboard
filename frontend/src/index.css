@@ -9,6 +9,12 @@
  * the original Tailwind neutral values (so dark mode is unchanged); light flips
  * the scale. `--line` backs the `line` color used for hairline borders/overlays.
  */
+:root {
+  /* Primary accent (recolored at runtime from settings.accent_color). */
+  --accent-rgb: 34 197 94;
+  --accent: #22c55e;
+}
+
 [data-theme="dark"] {
   color-scheme: dark;
   --neutral-50: 250 250 250;
@@ -25,6 +31,63 @@
   --line: 255 255 255;
   --glow-a: rgba(34, 197, 94, 0.06);
   --glow-b: rgba(139, 92, 246, 0.06);
+}
+
+/* Midnight: deep blue-black, cooler than dark. */
+[data-theme="midnight"] {
+  color-scheme: dark;
+  --neutral-50: 236 241 250;
+  --neutral-100: 224 231 244;
+  --neutral-200: 200 211 230;
+  --neutral-300: 168 182 208;
+  --neutral-400: 128 144 176;
+  --neutral-500: 96 112 146;
+  --neutral-600: 68 82 112;
+  --neutral-700: 44 56 82;
+  --neutral-800: 26 34 54;
+  --neutral-900: 15 20 36;
+  --neutral-950: 8 11 22;
+  --line: 180 200 240;
+  --glow-a: rgba(56, 189, 248, 0.07);
+  --glow-b: rgba(139, 92, 246, 0.07);
+}
+
+/* Slate: warm-grey neutral, softer than pure dark. */
+[data-theme="slate"] {
+  color-scheme: dark;
+  --neutral-50: 248 248 246;
+  --neutral-100: 240 240 236;
+  --neutral-200: 220 220 214;
+  --neutral-300: 190 190 182;
+  --neutral-400: 150 150 142;
+  --neutral-500: 112 112 104;
+  --neutral-600: 82 82 76;
+  --neutral-700: 62 62 58;
+  --neutral-800: 42 42 40;
+  --neutral-900: 28 28 26;
+  --neutral-950: 18 18 17;
+  --line: 230 228 222;
+  --glow-a: rgba(34, 197, 94, 0.05);
+  --glow-b: rgba(249, 115, 22, 0.05);
+}
+
+/* Contrast: pure black + brighter text, for maximum legibility. */
+[data-theme="contrast"] {
+  color-scheme: dark;
+  --neutral-50: 255 255 255;
+  --neutral-100: 250 250 250;
+  --neutral-200: 240 240 240;
+  --neutral-300: 225 225 225;
+  --neutral-400: 195 195 195;
+  --neutral-500: 160 160 160;
+  --neutral-600: 120 120 120;
+  --neutral-700: 80 80 80;
+  --neutral-800: 45 45 45;
+  --neutral-900: 18 18 18;
+  --neutral-950: 0 0 0;
+  --line: 255 255 255;
+  --glow-a: rgba(34, 197, 94, 0.09);
+  --glow-b: rgba(139, 92, 246, 0.09);
 }
 
 [data-theme="light"] {

@@ -9,6 +9,7 @@ import {
 // "today" is excluded: it's the live time-aware recap, always the current day.
 const DAY_TABS = new Set(["overview", "sleep", "training"]);
 import { localToday, fmtDay, setDateStyle } from "./format.js";
+import { applyAppearance } from "./theme.js";
 import DetailPanel from "./detail/DetailPanel.jsx";
 import { tabVisible } from "./caps.js";
 import SyncHeader from "./components/SyncHeader.jsx";
@@ -148,14 +149,18 @@ export default function App() {
     return () => { alive = false; };
   }, [selectedDate]);
 
-  // Apply the theme from settings once loaded (source of truth), mirroring it to
-  // localStorage so the next boot paints the right theme before settings arrive.
+  // Apply appearance (theme + density + accent + recovery band cutoffs) from
+  // settings once loaded (source of truth), mirroring theme to localStorage so
+  // the next boot paints the right theme before settings arrive.
   useEffect(() => {
-    if (!settings?.theme) return;
-    setTheme(settings.theme);
-    document.documentElement.dataset.theme = settings.theme;
-    localStorage.setItem("theme", settings.theme);
-  }, [settings?.theme]);
+    if (!settings) return;
+    applyAppearance(settings);
+    if (settings.theme) {
+      setTheme(settings.theme);
+      localStorage.setItem("theme", settings.theme);
+    }
+  }, [settings?.theme, settings?.density, settings?.accent_color,
+      settings?.recovery_green, settings?.recovery_amber]);
 
   // Chart/date display style ("Jul 4" vs "07-04") follows the setting.
   useEffect(() => { setDateStyle(settings?.date_style); }, [settings?.date_style]);
@@ -341,7 +346,7 @@ export default function App() {
           </div>
         </header>
         {settingsOpen && (
-          <Settings settings={settings} onChange={saveSettings}
+          <Settings settings={settings} onChange={saveSettings} tabs={allTabs}
             onSwitchAccount={switchAccount} onClose={() => setSettingsOpen(false)} />
         )}
 

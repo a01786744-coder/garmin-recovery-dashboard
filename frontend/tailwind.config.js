@@ -14,6 +14,7 @@ export default {
       colors: {
         neutral,
         line: "rgb(var(--line) / <alpha-value>)",
+        accent: "rgb(var(--accent-rgb) / <alpha-value>)",
       },
     },
   },

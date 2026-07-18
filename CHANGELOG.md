@@ -3,6 +3,35 @@
 All notable changes to the Garmin Recovery Dashboard. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/). Dates are YYYY-MM-DD.
 
+## [4.3.0] — 2026-07-17
+
+**Settings redesign** — a proper tabbed Settings dialog with a left-rail of
+sections and a raft of new options.
+
+### Added
+- **Tabbed Settings**: General · Dashboard & Tabs · Recovery & Metrics ·
+  Sync & Data · AI Coach · Phone & Sharing · About (left rail on desktop, chip
+  strip on mobile).
+- **General**: accent-color picker (recolors buttons, active tab, and the
+  recovery ring), three extra themes (Midnight, Slate, Contrast) on top of
+  Dark/Light, density (comfortable/compact), default launch tab, week-start
+  Mon/Sun, weather units °C/°F, and 12/24-hour clock.
+- **Recovery & Metrics**: HRV-vs-Resting-HR **weighting slider** (default 70/30 —
+  changing it re-scores your history), custom recovery **color-band cutoffs**
+  (green/amber), sleep goal, and max-HR for zone accuracy.
+- **Sync & Data**: sync-on-launch toggle, pause-syncing, and **backup & restore**
+  (your settings, custom tabs, and journal in one file — never your API key).
+- **AI Coach**: in-app model picker (Sonnet 5 / Opus 4.8 / Haiku 4.5), coaching
+  **tone** (balanced / concise / detailed / tough-love / encouraging),
+  auto-generate the morning brief, workout defaults (warmup length, pace-vs-HR
+  target preference), and a monthly-spend reminder.
+
+### Technical
+- `recovery.py` takes a tunable `hrv_weight` and custom band cutoffs, threaded
+  from settings through sync/rescore and the API. Appearance (theme + accent +
+  bands) applies from a single `applyAppearance()`; accent is a CSS variable
+  (`--accent`) plus a Tailwind `accent` color. 216 backend tests.
+
 ## [4.2.1] — 2026-07-17
 
 ### Fixed

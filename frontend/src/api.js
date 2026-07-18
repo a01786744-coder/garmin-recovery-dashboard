@@ -42,6 +42,8 @@ export const postJournal = (date, body) => jsonPost(`/api/journal/${date}`, body
 export const getSettings = () => j("/api/settings");
 export const postSettings = (partial) => jsonPost("/api/settings", partial);
 export const exportUrl = (fmt) => `${BASE}/api/export/${fmt}`;
+export const configBackupUrl = () => `${BASE}/api/config-backup`;
+export const postConfigRestore = (data) => jsonPost("/api/config-restore", data);
 export const getInsights = () => j("/api/insights");
 
 // v4.0 AI coach
