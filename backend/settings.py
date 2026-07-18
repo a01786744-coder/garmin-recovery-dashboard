@@ -42,7 +42,32 @@ DEFAULTS = {
     # the two never fall out of sync).
     "tab_order": [],
     "custom_tabs": [],
+    # --- v4.3 settings redesign ---
+    # General
+    "accent_color": "#22c55e",    # hex; recolors the app's accent
+    "density": "comfortable",     # "comfortable" | "compact"
+    "default_tab": "",            # tab key to open on launch ("" = first visible)
+    "week_start": "mon",          # "mon" | "sun"
+    "weather_units": "c",         # activity weather display: "c" | "f"
+    "clock": "24",                # "24" | "12"
+    # Recovery & metrics
+    "hrv_weight": 0.7,            # HRV share of the recovery blend (RHR = 1-this)
+    "recovery_green": 67,         # score >= this -> green band
+    "recovery_amber": 34,         # score >= this -> amber, else red
+    "sleep_goal_min": 0,          # nightly sleep goal, minutes (0 = use Garmin need)
+    "max_hr": 0,                  # for zone accuracy (0 = derive/none)
+    # Sync
+    "sync_on_launch": True,
+    "sync_paused": False,
+    # Coach
+    "coach_tone": "balanced",     # balanced|concise|detailed|tough|encouraging
+    "coach_auto_brief": False,    # generate the morning brief automatically on sync
+    "coach_warmup_default_s": 600,
+    "coach_target_pref": "auto",  # "auto" | "pace" | "hr"
+    "coach_budget_reminder": 0,   # USD/month soft reminder (0 = off)
 }
+
+_THEMES = ("dark", "light", "midnight", "slate", "contrast")
 
 
 def _clamp(v, lo, hi, default):
@@ -50,6 +75,26 @@ def _clamp(v, lo, hi, default):
         return max(lo, min(hi, int(v)))
     except (TypeError, ValueError):
         return default
+
+
+def _clampf(v, lo, hi, default):
+    try:
+        return max(lo, min(hi, float(v)))
+    except (TypeError, ValueError):
+        return default
+
+
+def _one_of(v, choices, default):
+    return v if v in choices else default
+
+
+import re as _re
+_HEX = _re.compile(r"^#[0-9a-fA-F]{6}$")
+
+
+def _hex_color(v, default):
+    v = str(v or "")
+    return v if _HEX.match(v) else default
 
 
 def _validate_custom_tabs(raw):
@@ -91,7 +136,7 @@ def _validate(raw):
     s["units"] = s["units"] if s["units"] in ("metric", "imperial") else "metric"
     s["sync_interval_minutes"] = _clamp(s["sync_interval_minutes"], 5, 240, 30)
     s["baseline_window_days"] = _clamp(s["baseline_window_days"], 7, 60, 30)
-    s["theme"] = s["theme"] if s["theme"] in ("dark", "light") else "dark"
+    s["theme"] = _one_of(s["theme"], _THEMES, "dark")
     s["check_updates"] = bool(s["check_updates"])
     s["phone_access"] = bool(s["phone_access"])
     s["access_pin"] = str(s.get("access_pin") or "")
@@ -109,6 +154,29 @@ def _validate(raw):
                       if t in valid_tab_ids and not (t in seen or seen.add(t))]
     tabs = s["hidden_tabs"] if isinstance(s["hidden_tabs"], list) else []
     s["hidden_tabs"] = [t for t in map(str, tabs) if t in valid_tab_ids]
+    # --- v4.3 ---
+    s["accent_color"] = _hex_color(s["accent_color"], "#22c55e")
+    s["density"] = _one_of(s["density"], ("comfortable", "compact"), "comfortable")
+    s["default_tab"] = str(s.get("default_tab") or "")   # frontend resolves validity
+    s["week_start"] = _one_of(s["week_start"], ("mon", "sun"), "mon")
+    s["weather_units"] = _one_of(s["weather_units"], ("c", "f"), "c")
+    s["clock"] = _one_of(str(s["clock"]), ("24", "12"), "24")
+    s["hrv_weight"] = round(_clampf(s["hrv_weight"], 0.0, 1.0, 0.7), 2)
+    # Bands: green strictly above amber, both in 1..99.
+    green = _clamp(s["recovery_green"], 2, 99, 67)
+    amber = _clamp(s["recovery_amber"], 1, green - 1, min(34, green - 1))
+    s["recovery_green"], s["recovery_amber"] = green, amber
+    s["sleep_goal_min"] = _clamp(s["sleep_goal_min"], 0, 720, 0)
+    s["max_hr"] = _clamp(s["max_hr"], 0, 230, 0)
+    s["sync_on_launch"] = bool(s["sync_on_launch"])
+    s["sync_paused"] = bool(s["sync_paused"])
+    s["coach_tone"] = _one_of(s["coach_tone"],
+                              ("balanced", "concise", "detailed", "tough", "encouraging"),
+                              "balanced")
+    s["coach_auto_brief"] = bool(s["coach_auto_brief"])
+    s["coach_warmup_default_s"] = _clamp(s["coach_warmup_default_s"], 0, 1800, 600)
+    s["coach_target_pref"] = _one_of(s["coach_target_pref"], ("auto", "pace", "hr"), "auto")
+    s["coach_budget_reminder"] = _clamp(s["coach_budget_reminder"], 0, 1000, 0)
     return s
 
 

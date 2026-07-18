@@ -31,10 +31,15 @@ def min_days_for_window(window):
     return min(BASELINE_MIN_DAYS, max(4, int(window) // 2))
 
 
-def recovery_explanation(hrv_today, rhr_today, hrv_hist, rhr_hist, min_days=None):
+DEFAULT_HRV_WEIGHT = 0.7   # HRV share of the blend; RHR gets the remainder
+
+
+def recovery_explanation(hrv_today, rhr_today, hrv_hist, rhr_hist, min_days=None,
+                         hrv_weight=DEFAULT_HRV_WEIGHT):
     """Why the score: today's HRV/RHR vs the personal baseline as z-scores
     (positive pushes recovery UP; RHR is inverted — lower is better). Same
-    guards as recovery_score: returns None whenever the score would be None."""
+    guards as recovery_score: returns None whenever the score would be None.
+    hrv_weight (0..1, user-tunable) sets how much HRV drives the blend."""
     need = BASELINE_MIN_DAYS if min_days is None else min_days
     hrv_hist = [h for h in (hrv_hist or []) if h is not None]
     rhr_hist = [r_ for r_ in (rhr_hist or []) if r_ is not None]
@@ -43,6 +48,7 @@ def recovery_explanation(hrv_today, rhr_today, hrv_hist, rhr_hist, min_days=None
     if len(hrv_hist) < need or len(rhr_hist) < need:
         return None
 
+    hw = _clamp(hrv_weight, 0.0, 1.0)
     hrv_mean, rhr_mean = mean(hrv_hist), mean(rhr_hist)
     hrv_std = max(pstdev(hrv_hist), 0.05 * hrv_mean) if hrv_mean else max(pstdev(hrv_hist), 1.0)
     rhr_std = max(pstdev(rhr_hist), 2.0)
@@ -51,25 +57,26 @@ def recovery_explanation(hrv_today, rhr_today, hrv_hist, rhr_hist, min_days=None
                 "z": round(_clamp((hrv_today - hrv_mean) / hrv_std, -3, 3), 2)},
         "rhr": {"today": rhr_today, "baseline": round(rhr_mean, 1),
                 "z": round(_clamp(-(rhr_today - rhr_mean) / rhr_std, -3, 3), 2)},
-        "weights": {"hrv": 0.7, "rhr": 0.3},
+        "weights": {"hrv": round(hw, 2), "rhr": round(1 - hw, 2)},
     }
 
 
-def recovery_score(hrv_today, rhr_today, hrv_hist, rhr_hist, min_days=None):
-    ex = recovery_explanation(hrv_today, rhr_today, hrv_hist, rhr_hist, min_days)
+def recovery_score(hrv_today, rhr_today, hrv_hist, rhr_hist, min_days=None,
+                   hrv_weight=DEFAULT_HRV_WEIGHT):
+    ex = recovery_explanation(hrv_today, rhr_today, hrv_hist, rhr_hist, min_days, hrv_weight)
     if ex is None:
         return None
-    z = 0.7 * ex["hrv"]["z"] + 0.3 * ex["rhr"]["z"]
+    z = ex["weights"]["hrv"] * ex["hrv"]["z"] + ex["weights"]["rhr"] * ex["rhr"]["z"]
     score = 100 / (1 + math.exp(-(1.0 * z + 0.3)))
     return int(round(min(100, max(0, score))))
 
 
-def recovery_band(score):
+def recovery_band(score, green=67, amber=34):
     if score is None:
         return None
-    if score >= 67:
+    if score >= green:
         return "green"
-    if score >= 34:
+    if score >= amber:
         return "yellow"
     return "red"
 

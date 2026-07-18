@@ -44,6 +44,53 @@ def test_corrupt_file_falls_back_to_defaults(tmp_path):
     assert st.load_settings(p) == st.DEFAULTS
 
 
+# --- v4.3: new option validation ---
+
+def test_v43_general_options_validate(tmp_path):
+    p = tmp_path / "settings.json"
+    s = st.save_settings(p, {
+        "accent_color": "#ff8800", "theme": "midnight", "density": "compact",
+        "week_start": "sun", "weather_units": "f", "clock": "12",
+    })
+    assert s["accent_color"] == "#ff8800"
+    assert s["theme"] == "midnight"
+    assert s["density"] == "compact"
+    assert (s["week_start"], s["weather_units"], s["clock"]) == ("sun", "f", "12")
+    # invalid values fall back
+    bad = st.save_settings(p, {"accent_color": "green", "theme": "neon",
+                               "density": "cozy", "clock": "13"})
+    assert bad["accent_color"] == "#22c55e"
+    assert bad["theme"] == "dark"
+    assert bad["density"] == "comfortable"
+    assert bad["clock"] == "24"
+
+
+def test_v43_hrv_weight_and_bands(tmp_path):
+    p = tmp_path / "settings.json"
+    s = st.save_settings(p, {"hrv_weight": 0.55, "recovery_green": 70, "recovery_amber": 40})
+    assert s["hrv_weight"] == 0.55
+    assert (s["recovery_green"], s["recovery_amber"]) == (70, 40)
+    # clamp: weight out of range; amber forced below green
+    c = st.save_settings(p, {"hrv_weight": 5, "recovery_green": 60, "recovery_amber": 80})
+    assert c["hrv_weight"] == 1.0
+    assert c["recovery_green"] == 60 and c["recovery_amber"] < 60
+
+
+def test_v43_coach_and_sync_options(tmp_path):
+    p = tmp_path / "settings.json"
+    s = st.save_settings(p, {"coach_tone": "tough", "coach_auto_brief": True,
+                             "coach_target_pref": "hr", "coach_warmup_default_s": 9999,
+                             "coach_budget_reminder": 5, "sync_paused": True,
+                             "sync_on_launch": False})
+    assert s["coach_tone"] == "tough"
+    assert s["coach_auto_brief"] is True
+    assert s["coach_target_pref"] == "hr"
+    assert s["coach_warmup_default_s"] == 1800     # clamped
+    assert s["coach_budget_reminder"] == 5
+    assert s["sync_paused"] is True and s["sync_on_launch"] is False
+    assert st.save_settings(p, {"coach_tone": "mean"})["coach_tone"] == "balanced"
+
+
 # --- v4.2: custom tabs + tab order ---
 
 def test_custom_tabs_sanitized_and_capped(tmp_path):
@@ -61,6 +108,28 @@ def test_custom_tabs_sanitized_and_capped(tmp_path):
     tab = s["custom_tabs"][0]
     assert tab["name"] == "Morning" and tab["icon"] == "🌅"
     assert [w["i"] for w in tab["layout"]] == ["recovery"]   # blank pruned
+
+
+def test_config_backup_and_restore_roundtrip(tmp_path):
+    p = tmp_path / "dashboard.db"
+    db.init_db(p)
+    app = create_app(p, client_factory=lambda: MagicMock(), tokenstore=tmp_path / "g")
+    c = app.test_client()
+    # set some config + a journal entry, then back it up
+    c.post("/api/settings", json={"accent_color": "#ff8800", "coach_tone": "tough",
+                                  "anthropic_api_key": "sk-secret"})
+    db.upsert_journal(p, "2026-07-15", {"late_caffeine": True}, "note")
+    backup = c.get("/api/config-backup").get_json()
+    assert backup["settings"]["accent_color"] == "#ff8800"
+    assert "anthropic_api_key" not in backup["settings"]     # key never exported
+    assert any(j["date"] == "2026-07-15" for j in backup["journal"])
+    # wipe to defaults, then restore
+    c.post("/api/settings", json={"accent_color": "#22c55e", "coach_tone": "balanced"})
+    r = c.post("/api/config-restore", json=backup).get_json()
+    assert r["ok"] and r["journal_restored"] >= 1
+    now = c.get("/api/settings").get_json()
+    assert now["accent_color"] == "#ff8800" and now["coach_tone"] == "tough"
+    assert now["anthropic_api_key"] == "sk-secret"           # existing key preserved
 
 
 def test_custom_tab_grid_coords_clamped(tmp_path):

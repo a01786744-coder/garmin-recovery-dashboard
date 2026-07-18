@@ -59,27 +59,29 @@ _FETCH_ERRORS = (GarminAuthError, GarminRateLimitError, GarminConnectionError,
                  GarminMFARequired)
 
 
-def _recovery_for(db_path, date_str, hrv_today, rhr_today, window=BASELINE_WINDOW_DAYS):
+def _recovery_for(db_path, date_str, hrv_today, rhr_today, window=BASELINE_WINDOW_DAYS,
+                  hrv_weight=rec.DEFAULT_HRV_WEIGHT):
     hrv_hist = db.get_history_before(db_path, "hrv_last_night", date_str, window)
     rhr_hist = db.get_history_before(db_path, "rhr", date_str, window)
     return rec.recovery_score(hrv_today, rhr_today, hrv_hist, rhr_hist,
-                              min_days=rec.min_days_for_window(window))
+                              min_days=rec.min_days_for_window(window),
+                              hrv_weight=hrv_weight)
 
 
-def rescore_history(db_path, window=BASELINE_WINDOW_DAYS):
+def rescore_history(db_path, window=BASELINE_WINDOW_DAYS, hrv_weight=rec.DEFAULT_HRV_WEIGHT):
     """Recompute recovery AND strain for every stored day from already-stored
-    data — no Garmin calls. Heals history after a formula fix or a
-    baseline-window settings change (scores were previously frozen at sync
-    time)."""
+    data — no Garmin calls. Heals history after a formula fix, a baseline-window
+    change, or a recovery-weighting change (scores are frozen at sync time)."""
     for d in db.get_dates(db_path):
         row = db.get_daily(db_path, d) or {}
         recovery = _recovery_for(db_path, d, row.get("hrv_last_night"),
-                                 row.get("rhr"), window)
+                                 row.get("rhr"), window, hrv_weight)
         strain = rec.strain_score(db.get_activities_on(db_path, d), row)
         db.update_scores(db_path, d, recovery=recovery, strain=strain)
 
 
-def run_sync(client, db_path, today=None, backfill_days=BASELINE_WINDOW_DAYS, pacing=1.5):
+def run_sync(client, db_path, today=None, backfill_days=BASELINE_WINDOW_DAYS, pacing=1.5,
+             hrv_weight=rec.DEFAULT_HRV_WEIGHT):
     today = today or dt.date.today()
     today_str = today.isoformat()
     start_str = (today - dt.timedelta(days=backfill_days)).isoformat()
@@ -104,7 +106,7 @@ def run_sync(client, db_path, today=None, backfill_days=BASELINE_WINDOW_DAYS, pa
                 break
             metrics = {k: None for k in db.DAILY_FIELDS}
             metrics.update(base)
-            recovery = _recovery_for(db_path, d, base.get("hrv_last_night"), base.get("rhr"), backfill_days)
+            recovery = _recovery_for(db_path, d, base.get("hrv_last_night"), base.get("rhr"), backfill_days, hrv_weight)
             # merge: a sparse baseline re-fetch must never wipe richer fields
             # a past full sync already stored for this day.
             db.upsert_daily(db_path, d, metrics, recovery, None, merge=True)
@@ -122,12 +124,12 @@ def run_sync(client, db_path, today=None, backfill_days=BASELINE_WINDOW_DAYS, pa
 
     db.upsert_activities(db_path, activities)
     recovery = _recovery_for(db_path, today_str,
-                             metrics.get("hrv_last_night"), metrics.get("rhr"), backfill_days)
+                             metrics.get("hrv_last_night"), metrics.get("rhr"), backfill_days, hrv_weight)
     strain = rec.strain_score([a for a in activities if a.get("date") == today_str], metrics)
     db.upsert_daily(db_path, today_str, metrics, recovery, strain)
     # Newly backfilled days extend the baseline; recompute stored scores so
     # history heals as data accumulates (cheap: local DB only).
-    rescore_history(db_path, backfill_days)
+    rescore_history(db_path, backfill_days, hrv_weight)
 
     # Today-only extras (cost-controlled: not backfilled). Non-fatal — the core
     # day is already stored, so a failure here must not fail the whole sync.

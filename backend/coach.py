@@ -175,6 +175,38 @@ positive signal, warn = caution, bad = negative, neutral = informational). Examp
 {"label": "ACWR", "value": "1.4", "tone": "warn"}."""
 
 
+_TONE = {
+    "balanced": "",
+    "concise": "Style: be brief — a couple of sentences plus a short bullet list at "
+               "most. No preamble, no restating the question.",
+    "detailed": "Style: be thorough — explain the physiology and the reasoning "
+                "behind each recommendation, not just the conclusion.",
+    "tough": "Style: be a demanding, no-excuses coach. Push the athlete and call out "
+             "choices that hurt recovery (alcohol, skipped rest, overreaching) directly.",
+    "encouraging": "Style: be warm and motivating. Lead with what's going well before "
+                   "any critique, and frame advice positively.",
+}
+
+
+def _tone_addendum(settings):
+    """A small, per-user system block appended after the cached base prompt so
+    tone/workout-default preferences apply without invalidating its cache."""
+    parts = []
+    tone = _TONE.get(settings.get("coach_tone") or "balanced")
+    if tone:
+        parts.append(tone)
+    warm = settings.get("coach_warmup_default_s")
+    if warm:
+        parts.append(f"Default warmup length ~{round(warm / 60)} min unless the "
+                     "session calls for otherwise.")
+    pref = settings.get("coach_target_pref")
+    if pref == "pace":
+        parts.append("Prefer pace (sec/km) targets for intervals.")
+    elif pref == "hr":
+        parts.append("Prefer heart-rate (bpm) targets for intervals.")
+    return "\n".join(parts)
+
+
 def is_configured(settings):
     return bool(settings.get("coach_enabled") and settings.get("anthropic_api_key"))
 
@@ -184,12 +216,16 @@ def _call_claude(settings, messages):
     Import is local so the app still runs if the package were missing."""
     import anthropic
     client = anthropic.Anthropic(api_key=settings["anthropic_api_key"])
+    system = [{"type": "text", "text": SYSTEM_PROMPT,
+               "cache_control": {"type": "ephemeral"}}]
+    addendum = _tone_addendum(settings)
+    if addendum:
+        system.append({"type": "text", "text": addendum})
     resp = client.messages.create(
         model=settings.get("coach_model") or "claude-sonnet-5",
         max_tokens=4000,
         thinking={"type": "adaptive"},
-        system=[{"type": "text", "text": SYSTEM_PROMPT,
-                 "cache_control": {"type": "ephemeral"}}],
+        system=system,
         messages=messages,
         output_config={"format": {"type": "json_schema", "schema": RESPONSE_SCHEMA}},
     )

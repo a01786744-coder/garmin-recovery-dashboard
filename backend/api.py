@@ -118,7 +118,8 @@ def create_app(db_path=cfg.DB_PATH, client_factory=None,
         # data instead of a blank dashboard.
         metrics = db.get_primary_day(db_path)
         sync = db.get_last_sync(db_path)
-        window = st.load_settings(Path(db_path).parent / "settings.json")["baseline_window_days"]
+        cfg = st.load_settings(Path(db_path).parent / "settings.json")
+        window = cfg["baseline_window_days"]
         # Baseline progress for the Recovery gauge ("Baseline 3/4 days").
         need = rec.min_days_for_window(window)
         if metrics:
@@ -129,7 +130,7 @@ def create_app(db_path=cfg.DB_PATH, client_factory=None,
             # "Why this score" payloads for the detail panels.
             recovery_explain = rec.recovery_explanation(
                 metrics.get("hrv_last_night"), metrics.get("rhr"),
-                hrv_hist, rhr_hist, min_days=need)
+                hrv_hist, rhr_hist, min_days=need, hrv_weight=cfg["hrv_weight"])
             strain_explain = rec.strain_breakdown(
                 db.get_activities_on(db_path, metrics["date"]), metrics)
         else:
@@ -385,11 +386,14 @@ def create_app(db_path=cfg.DB_PATH, client_factory=None,
         except Exception as e:
             db.write_sync_log(db_path, "error", type(e).__name__, {})
             return jsonify({"status": "error", "message": type(e).__name__}), 200
-        # Same window as the scheduled loop — a manual sync must not rescore
-        # history under the default window and wipe short-window scores.
+        # Same window/weighting as the scheduled loop — a manual sync must not
+        # rescore history under different params and diverge from stored scores.
         from backend import settings as st
-        window = st.load_settings(Path(db_path).parent / "settings.json")["baseline_window_days"]
-        return jsonify(run_sync(client, db_path, backfill_days=window))
+        cfg = st.load_settings(Path(db_path).parent / "settings.json")
+        result = run_sync(client, db_path, backfill_days=cfg["baseline_window_days"],
+                          hrv_weight=cfg["hrv_weight"])
+        _maybe_auto_brief(db_path, cfg)
+        return jsonify(result)
 
     # --- Auth: in-app login / MFA / logout (no file editing by the user) ---
 
@@ -480,14 +484,47 @@ def create_app(db_path=cfg.DB_PATH, client_factory=None,
     def post_settings_route():
         from backend import settings as st
         spath = Path(db_path).parent / "settings.json"
-        before = st.load_settings(spath)["baseline_window_days"]
+        prev = st.load_settings(spath)
         data = request.get_json(silent=True) or {}
         saved = st.save_settings(spath, data)
-        # A new baseline window changes what qualifies for a score — heal the
-        # stored history immediately instead of waiting for the next sync.
-        if saved["baseline_window_days"] != before:
-            rescore_history(db_path, saved["baseline_window_days"])
+        # A new baseline window OR a changed HRV/RHR weighting changes stored
+        # recovery scores — heal history immediately instead of waiting for the
+        # next sync. (Band cutoffs are display-only; the frontend recolors.)
+        if (saved["baseline_window_days"] != prev["baseline_window_days"]
+                or saved["hrv_weight"] != prev["hrv_weight"]):
+            rescore_history(db_path, saved["baseline_window_days"], saved["hrv_weight"])
         return jsonify(saved)
+
+    # --- v4.3: config backup / restore (settings + custom tabs + journal;
+    # distinct from the health-data export). Local only.
+    @app.get("/api/config-backup")
+    def config_backup():
+        import json as _json
+        from backend import settings as st
+        cfg = dict(st.load_settings(Path(db_path).parent / "settings.json"))
+        cfg.pop("anthropic_api_key", None)   # never write the key into a backup file
+        body = _json.dumps({
+            "version": 1,
+            "settings": cfg,
+            "journal": db.get_journal_range(db_path, 3650),
+        }, indent=2, default=str)
+        return Response(body, mimetype="application/json", headers={
+            "Content-Disposition": "attachment; filename=garmin-dashboard-config.json"})
+
+    @app.post("/api/config-restore")
+    def config_restore():
+        from backend import settings as st
+        data = request.get_json(silent=True) or {}
+        cfg = data.get("settings") if isinstance(data.get("settings"), dict) else {}
+        cfg.pop("anthropic_api_key", None)   # a backup never carries the key; keep the current one
+        saved = st.save_settings(Path(db_path).parent / "settings.json", cfg)
+        restored = 0
+        for j in (data.get("journal") or []):
+            if isinstance(j, dict) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(j.get("date", ""))):
+                db.upsert_journal(db_path, j["date"], j.get("tags") or {}, j.get("note") or "")
+                restored += 1
+        rescore_history(db_path, saved["baseline_window_days"], saved["hrv_weight"])
+        return jsonify({"ok": True, "journal_restored": restored, "settings": saved})
 
     # --- Export the user's own data (local download) ---
 
@@ -529,23 +566,41 @@ def create_app(db_path=cfg.DB_PATH, client_factory=None,
     return app
 
 
-def _scheduled_loop(db_path, client_factory):
+def _scheduled_loop(db_path, client_factory, first=False):
     from backend import settings as st
     s = st.load_settings(Path(db_path).parent / "settings.json")
+    # Respect the user's sync preferences: a paused sync skips work entirely,
+    # and sync_on_launch=False skips only the very first (launch) run.
+    skip = s["sync_paused"] or (first and not s["sync_on_launch"])
+    if not skip:
+        try:
+            client = client_factory()
+            client.login()
+            run_sync(client, db_path, backfill_days=s["baseline_window_days"],
+                     hrv_weight=s["hrv_weight"])
+            _maybe_auto_brief(db_path, s)
+        except Exception as e:
+            log.warning("scheduled sync failed: %s", type(e).__name__)
+            db.write_sync_log(db_path, "error", type(e).__name__, {})
+    # Re-read the interval each cycle so a settings change takes effect on the
+    # next run without restarting the app.
+    interval = s["sync_interval_minutes"] * 60
+    t = threading.Timer(interval, _scheduled_loop, args=(db_path, client_factory))
+    t.daemon = True
+    t.start()
+
+
+def _maybe_auto_brief(db_path, settings):
+    """Pre-generate today's coach brief after a sync, if the user opted in and
+    the coach is configured. Cached per date, so at most one Claude call/day."""
+    from backend import coach
+    if not (settings.get("coach_auto_brief") and coach.is_configured(settings)):
+        return
+    import datetime as _dt
     try:
-        client = client_factory()
-        client.login()
-        run_sync(client, db_path, backfill_days=s["baseline_window_days"])
+        coach.daily_brief(db_path, settings, _dt.date.today().isoformat())
     except Exception as e:
-        log.warning("scheduled sync failed: %s", type(e).__name__)
-        db.write_sync_log(db_path, "error", type(e).__name__, {})
-    finally:
-        # Re-read the interval each cycle so a settings change takes effect on
-        # the next run without restarting the app.
-        interval = s["sync_interval_minutes"] * 60
-        t = threading.Timer(interval, _scheduled_loop, args=(db_path, client_factory))
-        t.daemon = True
-        t.start()
+        log.warning("auto-brief failed: %s", type(e).__name__)
 
 
 def main():
@@ -570,7 +625,7 @@ def main():
     # never delay the server coming up, or the UI reports "can't reach the
     # service" before the port is even open.
     threading.Thread(target=_scheduled_loop, args=(cfg.DB_PATH, factory),
-                     daemon=True).start()
+                     kwargs={"first": True}, daemon=True).start()
     from backend import settings as st
     host = resolve_host(st.load_settings(Path(cfg.DB_PATH).parent / "settings.json"))
     app.run(host=host, port=5057)

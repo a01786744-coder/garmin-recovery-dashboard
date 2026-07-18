@@ -154,6 +154,40 @@ def test_default_model_is_sonnet5():
     assert DEFAULTS["coach_model"] == "claude-sonnet-5"
 
 
+# --- v4.3: coach tone + workout-default addendum ---
+
+def test_tone_addendum_varies_by_setting():
+    assert coach._tone_addendum({"coach_tone": "balanced"}) == ""
+    tough = coach._tone_addendum({"coach_tone": "tough"})
+    assert "no-excuses" in tough.lower()
+    concise = coach._tone_addendum({"coach_tone": "concise"})
+    assert "brief" in concise.lower()
+
+
+def test_tone_addendum_includes_workout_defaults():
+    s = coach._tone_addendum({"coach_tone": "balanced",
+                              "coach_warmup_default_s": 900, "coach_target_pref": "hr"})
+    assert "15 min" in s          # 900s -> 15 min
+    assert "heart-rate" in s.lower()
+
+
+def test_call_claude_appends_tone_system_block():
+    import json as _json
+    captured = {}
+    fake = MagicMock()
+    fake.stop_reason = "end_turn"
+    blk = MagicMock(); blk.type = "text"
+    blk.text = _json.dumps({"reply": "ok", "workout": None})
+    fake.content = [blk]
+    with patch("anthropic.Anthropic") as A:
+        A.return_value.messages.create.side_effect = lambda **kw: captured.update(kw) or fake
+        coach._call_claude({**_settings(), "coach_tone": "tough"},
+                           [{"role": "user", "content": "x"}])
+    # base cached prompt + tone block
+    assert len(captured["system"]) == 2
+    assert "no-excuses" in captured["system"][1]["text"].lower()
+
+
 # --- workout design -> Garmin conversion ---
 
 DESIGN = {
