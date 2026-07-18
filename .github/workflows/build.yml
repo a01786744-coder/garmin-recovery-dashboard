@@ -69,5 +69,15 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Idempotent: first matrix job creates the release, the other reuses it.
-          gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --generate-notes --verify-tag 2>/dev/null || true
-          gh release upload "$GITHUB_REF_NAME" release/*.${{ matrix.ext }} --clobber
+          # Retried: a transient GitHub API failure (v4.2.0 hit a 503 here) must
+          # not ship a release missing one platform's installer.
+          for i in 1 2 3 4 5; do
+            gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 && break
+            gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --generate-notes --verify-tag && break
+            echo "release create attempt $i failed; retrying in 20s"; sleep 20
+          done
+          for i in 1 2 3 4 5; do
+            gh release upload "$GITHUB_REF_NAME" release/*.${{ matrix.ext }} --clobber && break
+            [ "$i" = 5 ] && { echo "upload failed after 5 attempts"; exit 1; }
+            echo "upload attempt $i failed; retrying in 20s"; sleep 20
+          done
