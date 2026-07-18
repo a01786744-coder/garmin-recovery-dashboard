@@ -159,9 +159,9 @@ function Chat() {
         <input value={input} onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && send()}
           placeholder="Ask your coach anything…"
-          className="flex-1 rounded-xl border border-line/10 bg-neutral-950/60 px-3.5 py-2.5 text-sm text-neutral-100 placeholder:text-neutral-600 focus:border-emerald-500/40 focus:outline-none" />
+          className="flex-1 rounded-xl border border-line/10 bg-neutral-950/60 px-3.5 py-2.5 text-sm text-neutral-100 placeholder:text-neutral-600 focus:border-accent/40 focus:outline-none" />
         <button onClick={send} disabled={busy || !input.trim()}
-          className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-40">
+          className="rounded-xl bg-accent px-4 py-2.5 text-sm font-medium text-white hover:bg-accent/90 disabled:opacity-40">
           Send
         </button>
       </div>

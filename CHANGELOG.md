@@ -3,6 +3,13 @@
 All notable changes to the Garmin Recovery Dashboard. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/). Dates are YYYY-MM-DD.
 
+## [4.3.1] — 2026-07-17
+
+### Fixed
+- **Accent color now recolors the whole app**, not just the Settings panel — the
+  active tab, primary buttons, focus rings, and toggles follow your chosen color.
+  Semantic green/amber/red (good/caution/bad) stay meaningful.
+
 ## [4.3.0] — 2026-07-17
 
 **Settings redesign** — a proper tabbed Settings dialog with a left-rail of

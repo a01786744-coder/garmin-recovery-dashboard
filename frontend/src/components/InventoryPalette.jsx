@@ -29,7 +29,7 @@ export default function InventoryPalette({ present, onAdd, onClose }) {
           {["All", ...WIDGET_CATEGORIES].map((c) => (
             <button key={c} onClick={() => setCat(c)}
               className={"rounded-md px-2.5 py-1 text-xs font-medium " +
-                (cat === c ? "bg-emerald-600 text-white"
+                (cat === c ? "bg-accent text-white"
                   : "bg-black/10 text-neutral-700 hover:bg-black/20 dark:bg-white/10 dark:text-neutral-200")}>
               {c}
             </button>

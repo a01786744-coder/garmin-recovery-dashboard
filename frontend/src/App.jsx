@@ -218,12 +218,12 @@ export default function App() {
               try reopening the app.
             </p>
             <button onClick={() => { setAuthError(false); checkAuth(); }}
-              className="rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-neutral-50 hover:bg-emerald-500">
+              className="rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-neutral-50 hover:bg-accent/90">
               Try again
             </button>
           </>
         ) : (
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-neutral-700 border-t-emerald-500" />
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-neutral-700 border-t-accent" />
         )}
       </div>
     );
@@ -392,7 +392,7 @@ export default function App() {
 
         {today?.progress && !today.progress.complete && (
           <div className="mb-4 flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-2.5 text-sm text-emerald-200">
-            <span className="h-3 w-3 shrink-0 animate-spin rounded-full border-2 border-emerald-300/40 border-t-emerald-300" />
+            <span className="h-3 w-3 shrink-0 animate-spin rounded-full border-2 border-emerald-300/40 border-t-accent" />
             Syncing your Garmin history… {today.progress.days_synced} of {today.progress.target_days} days.
             This can take a few minutes on first run, and resumes automatically if Garmin rate-limits.
           </div>

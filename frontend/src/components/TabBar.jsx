@@ -41,7 +41,7 @@ function TabChip({ tab, active, editMode, hidden, onSelect, onToggleHide, onDele
           (editMode ? "cursor-grab active:cursor-grabbing " : "") +
           (active && !editMode ? "text-neutral-50" : "text-neutral-400 hover:text-neutral-200")}>
         {active && !editMode && (
-          <motion.span layoutId="tabpill" className="absolute inset-0 rounded-lg bg-line/10"
+          <motion.span layoutId="tabpill" className="absolute inset-0 rounded-lg bg-accent/15 ring-1 ring-accent/25"
             transition={{ type: "spring", stiffness: 400, damping: 32 }} />
         )}
         {label}
@@ -51,7 +51,7 @@ function TabChip({ tab, active, editMode, hidden, onSelect, onToggleHide, onDele
           onClick={() => (tab.custom ? onDelete(tab.key) : onToggleHide(tab.key))}
           title={tab.custom ? "Delete tab" : hidden ? "Show tab" : "Hide tab"}
           className={"absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold shadow " +
-            (hidden ? "bg-emerald-600 text-white" : "bg-neutral-700 text-neutral-100 hover:bg-red-600")}>
+            (hidden ? "bg-accent text-white" : "bg-neutral-700 text-neutral-100 hover:bg-red-600")}>
           {hidden ? "+" : tab.custom ? "🗑" : "✕"}
         </button>
       )}
@@ -68,12 +68,12 @@ function NewTabPopover({ onCreate, onClose }) {
       <input autoFocus value={name} onChange={(e) => setName(e.target.value)}
         placeholder="Tab name" maxLength={40}
         onKeyDown={(e) => e.key === "Enter" && name.trim() && (onCreate(name.trim(), icon), onClose())}
-        className="mb-2 w-full rounded-lg border border-line/10 bg-neutral-950/60 px-2.5 py-1.5 text-sm text-neutral-100 focus:border-emerald-500/50 focus:outline-none" />
+        className="mb-2 w-full rounded-lg border border-line/10 bg-neutral-950/60 px-2.5 py-1.5 text-sm text-neutral-100 focus:border-accent/50 focus:outline-none" />
       <div className="mb-3 flex flex-wrap gap-1">
         {ICONS.map((ic) => (
           <button key={ic} onClick={() => setIcon(ic)}
             className={"flex h-7 w-7 items-center justify-center rounded-md text-base " +
-              (icon === ic ? "bg-emerald-600/30 ring-1 ring-emerald-500" : "hover:bg-line/10")}>
+              (icon === ic ? "bg-accent/30 ring-1 ring-accent/60" : "hover:bg-line/10")}>
             {ic}
           </button>
         ))}
@@ -81,7 +81,7 @@ function NewTabPopover({ onCreate, onClose }) {
       <div className="flex justify-end gap-2">
         <button onClick={onClose} className="rounded-md px-2.5 py-1 text-xs text-neutral-400 hover:text-neutral-200">Cancel</button>
         <button disabled={!name.trim()} onClick={() => { onCreate(name.trim(), icon); onClose(); }}
-          className="rounded-md bg-emerald-600 px-2.5 py-1 text-xs font-medium text-white disabled:opacity-40">Create</button>
+          className="rounded-md bg-accent px-2.5 py-1 text-xs font-medium text-white disabled:opacity-40">Create</button>
       </div>
     </div>
   );
@@ -123,7 +123,7 @@ export default function TabBar({ tabs, hidden, activeKey, onSelect, onReorder,
           </DndContext>
           {editMode && (
             <button onClick={() => setShowNew((v) => !v)} title="New custom tab"
-              className="shrink-0 rounded-lg px-2.5 py-1.5 text-sm font-medium text-emerald-400 hover:bg-emerald-500/10">
+              className="shrink-0 rounded-lg px-2.5 py-1.5 text-sm font-medium text-emerald-400 hover:bg-accent/90/10">
               ＋ Tab
             </button>
           )}
@@ -131,7 +131,7 @@ export default function TabBar({ tabs, hidden, activeKey, onSelect, onReorder,
         <button onClick={() => { setEditMode((v) => !v); setShowNew(false); }}
           title={editMode ? "Done editing" : "Edit tabs"}
           className={"shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-medium " +
-            (editMode ? "bg-emerald-600 text-white" : "text-neutral-500 hover:text-neutral-200")}>
+            (editMode ? "bg-accent text-white" : "text-neutral-500 hover:text-neutral-200")}>
           {editMode ? "Done" : "✎ Edit"}
         </button>
       </div>

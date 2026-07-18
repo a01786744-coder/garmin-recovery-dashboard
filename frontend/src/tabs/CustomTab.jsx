@@ -42,7 +42,7 @@ export default function CustomTab({ tab, editMode, onChangeLayout, onAddWidget, 
       {editMode && (
         <div className="mb-3 flex items-center gap-2">
           <button onClick={() => setShowPalette(true)}
-            className="rounded-lg border border-emerald-500/40 px-3 py-1.5 text-sm font-medium text-emerald-300 hover:bg-emerald-500/10">
+            className="rounded-lg border border-emerald-500/40 px-3 py-1.5 text-sm font-medium text-emerald-300 hover:bg-accent/90/10">
             ＋ Add widget
           </button>
           <span className="text-[11px] text-neutral-500">Drag to move · drag a corner to resize · ✕ to remove</span>
@@ -70,7 +70,7 @@ export default function CustomTab({ tab, editMode, onChangeLayout, onAddWidget, 
                   </button>
                 )}
                 {editMode && (
-                  <div className="pointer-events-none absolute inset-0 z-0 rounded-2xl ring-2 ring-dashed ring-emerald-500/30" />
+                  <div className="pointer-events-none absolute inset-0 z-0 rounded-2xl ring-2 ring-dashed ring-accent/60/30" />
                 )}
                 <div className="h-full overflow-auto">{def.render()}</div>
               </div>

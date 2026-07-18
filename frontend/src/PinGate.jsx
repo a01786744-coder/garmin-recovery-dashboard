@@ -20,7 +20,7 @@ export default function PinGate() {
         <input autoFocus type="password" inputMode="numeric" value={pin}
           onChange={(e) => setPin(e.target.value)}
           className="rounded-lg border border-line/10 bg-neutral-900 px-3 py-2 text-neutral-100" />
-        <button className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-neutral-50 hover:bg-emerald-500">
+        <button className="rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-neutral-50 hover:bg-accent/90">
           Unlock
         </button>
       </form>

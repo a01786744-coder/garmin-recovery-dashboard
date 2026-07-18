@@ -76,7 +76,7 @@ export default function Journal({ date, insights }) {
         onChange={(e) => setNote(e.target.value)}
         onBlur={() => save(entry.tags, note)}
         onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
-        className="mt-3 w-full rounded-lg border border-line/10 bg-neutral-950/60 px-3 py-1.5 text-sm text-neutral-100 outline-none placeholder:text-neutral-600 focus:border-emerald-500/60" />
+        className="mt-3 w-full rounded-lg border border-line/10 bg-neutral-950/60 px-3 py-1.5 text-sm text-neutral-100 outline-none placeholder:text-neutral-600 focus:border-accent/60" />
     </Card>
   );
 }

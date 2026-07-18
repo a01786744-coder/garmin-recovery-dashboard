@@ -77,12 +77,12 @@ export default function Login({ onSuccess, notice }) {
             <input
               type="email" autoFocus value={email} onChange={(e) => setEmail(e.target.value)}
               placeholder="Garmin email"
-              className="w-full rounded-lg border border-line/10 bg-neutral-950/60 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-emerald-500/60"
+              className="w-full rounded-lg border border-line/10 bg-neutral-950/60 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-accent/60"
             />
             <input
               type="password" value={password} onChange={(e) => setPassword(e.target.value)}
               placeholder="Password"
-              className="w-full rounded-lg border border-line/10 bg-neutral-950/60 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-emerald-500/60"
+              className="w-full rounded-lg border border-line/10 bg-neutral-950/60 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-accent/60"
             />
             <Submit busy={busy} label="Sign in" />
           </form>
@@ -95,7 +95,7 @@ export default function Login({ onSuccess, notice }) {
               type="text" inputMode="numeric" autoFocus value={code}
               onChange={(e) => setCode(e.target.value.trim())}
               placeholder="6-digit code"
-              className="w-full rounded-lg border border-line/10 bg-neutral-950/60 px-3 py-2 text-center text-lg tracking-widest text-neutral-100 outline-none focus:border-emerald-500/60"
+              className="w-full rounded-lg border border-line/10 bg-neutral-950/60 px-3 py-2 text-center text-lg tracking-widest text-neutral-100 outline-none focus:border-accent/60"
             />
             <Submit busy={busy} label="Verify" />
             <button type="button" onClick={() => { setStage("login"); setCode(""); setError(null); }}
@@ -119,7 +119,7 @@ function Submit({ busy, label }) {
   return (
     <motion.button
       whileTap={{ scale: 0.98 }} type="submit" disabled={busy}
-      className="w-full rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-neutral-50 hover:bg-emerald-500 disabled:opacity-50"
+      className="w-full rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-neutral-50 hover:bg-accent/90 disabled:opacity-50"
     >
       {busy ? "Working…" : label}
     </motion.button>
