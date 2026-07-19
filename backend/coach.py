@@ -211,9 +211,10 @@ def is_configured(settings):
     return bool(settings.get("coach_enabled") and settings.get("anthropic_api_key"))
 
 
-def _call_claude(settings, messages):
-    """One structured call to Claude. Returns the parsed {reply, workout} dict.
-    Import is local so the app still runs if the package were missing."""
+def _call_claude(settings, messages, schema=None, max_tokens=4000):
+    """One structured call to Claude. Returns the parsed dict for `schema`
+    (default: the brief/chat RESPONSE_SCHEMA). Import is local so the app
+    still runs if the package were missing."""
     import anthropic
     client = anthropic.Anthropic(api_key=settings["anthropic_api_key"])
     system = [{"type": "text", "text": SYSTEM_PROMPT,
@@ -223,19 +224,24 @@ def _call_claude(settings, messages):
         system.append({"type": "text", "text": addendum})
     resp = client.messages.create(
         model=settings.get("coach_model") or "claude-sonnet-5",
-        max_tokens=4000,
+        max_tokens=max_tokens,
         thinking={"type": "adaptive"},
         system=system,
         messages=messages,
-        output_config={"format": {"type": "json_schema", "schema": RESPONSE_SCHEMA}},
+        output_config={"format": {"type": "json_schema",
+                                  "schema": schema or RESPONSE_SCHEMA}},
     )
     if resp.stop_reason == "refusal":
+        if schema is not None:
+            raise RuntimeError("coach refused the request")
         return {"reply": "The coach couldn't answer that request.",
                 "highlights": [], "workout": None}
     text = next(b.text for b in resp.content if b.type == "text")
     data = json.loads(text)
-    data["reply"] = clean_text(data.get("reply") or "")
-    data.setdefault("highlights", [])
+    if "reply" in data:
+        data["reply"] = clean_text(data.get("reply") or "")
+    if schema is None:
+        data.setdefault("highlights", [])
     return data
 
 

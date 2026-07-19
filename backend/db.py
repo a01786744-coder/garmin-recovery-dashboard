@@ -133,11 +133,19 @@ def init_db(path):
         # v4.1: highlight chips alongside brief/chat text.
         _ensure_columns(c, "coach_briefs", [("highlights_json", "TEXT")])
         _ensure_columns(c, "coach_chat", [("highlights_json", "TEXT")])
+        # v5.0: the (single) active training plan.
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS training_plan (
+                id INTEGER PRIMARY KEY CHECK (id = 1),
+                race_json TEXT, weeks_json TEXT, notes TEXT,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )""")
 
 
 _ALL_TABLES = ["daily_metrics", "activities", "sync_log", "daily_intraday",
                "perf_metrics", "personal_records", "activity_detail",
-               "coach_briefs", "coach_chat", "coach_workouts"]
+               "coach_briefs", "coach_chat", "coach_workouts", "training_plan"]
 
 
 def clear_all_data(path):
@@ -578,3 +586,31 @@ def get_activity_detail(path, activity_id):
                 "exercise_sets": _load(row["exercise_sets_json"]),
                 "dynamics": _load(row["dynamics_json"]) if "dynamics_json" in keys else None,
                 "fetched_at": row["fetched_at"]}
+
+
+# --- v5.0: training plan (single active plan, id=1) ---
+
+def save_training_plan(path, race, weeks, notes):
+    with _conn(path) as c:
+        c.execute("INSERT INTO training_plan (id, race_json, weeks_json, notes) "
+                  "VALUES (1,?,?,?) "
+                  "ON CONFLICT(id) DO UPDATE SET race_json=excluded.race_json, "
+                  "weeks_json=excluded.weeks_json, notes=excluded.notes, "
+                  "updated_at=CURRENT_TIMESTAMP",
+                  (json.dumps(race), json.dumps(weeks), notes))
+
+
+def get_training_plan(path):
+    with _conn(path) as c:
+        row = c.execute("SELECT * FROM training_plan WHERE id=1").fetchone()
+        if not row:
+            return None
+        return {"race": json.loads(row["race_json"]),
+                "weeks": json.loads(row["weeks_json"]) if row["weeks_json"] else [],
+                "notes": row["notes"],
+                "created_at": row["created_at"], "updated_at": row["updated_at"]}
+
+
+def delete_training_plan(path):
+    with _conn(path) as c:
+        c.execute("DELETE FROM training_plan WHERE id=1")

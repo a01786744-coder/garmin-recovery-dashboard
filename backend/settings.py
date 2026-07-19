@@ -58,6 +58,7 @@ DEFAULTS = {
     "max_hr": 0,                  # for zone accuracy (0 = derive/none)
     # Sync
     "sync_on_launch": True,
+    "morning_notification": True,
     "sync_paused": False,
     # Coach
     "coach_tone": "balanced",     # balanced|concise|detailed|tough|encouraging
@@ -170,6 +171,7 @@ def _validate(raw):
     s["max_hr"] = _clamp(s["max_hr"], 0, 230, 0)
     s["sync_on_launch"] = bool(s["sync_on_launch"])
     s["sync_paused"] = bool(s["sync_paused"])
+    s["morning_notification"] = bool(s["morning_notification"])
     s["coach_tone"] = _one_of(s["coach_tone"],
                               ("balanced", "concise", "detailed", "tough", "encouraging"),
                               "balanced")

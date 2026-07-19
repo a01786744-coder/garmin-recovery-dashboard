@@ -14,6 +14,7 @@ import { phrase, round } from "../format.js";
 import { getIntraday } from "../api.js";
 import { useAsync, pairsToXY } from "../useApi.js";
 import { visible } from "../caps.js";
+import AcwrChart from "../components/AcwrChart.jsx";
 
 const FACTORS = [
   ["tr_sleep_factor", "Sleep"],
@@ -40,7 +41,7 @@ function FactorBar({ label, value }) {
   );
 }
 
-export default function Training({ today, caps, onOpen }) {
+export default function Training({ today, trends, caps, onOpen }) {
   const m = today?.metrics || {};
   const date = m.date;
   const show = (cat) => visible(caps, cat);
@@ -76,6 +77,15 @@ export default function Training({ today, caps, onOpen }) {
         </Card>
         )}
       </Grid>
+
+      {show("training_load_acwr") && (
+      <Card>
+        <SectionTitle sub="Acute ÷ chronic workload over time — spikes above 1.5 raise injury risk">
+          Injury-risk load ratio
+        </SectionTitle>
+        <AcwrChart days={trends?.days} />
+      </Card>
+      )}
 
       <Grid className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {show("training_load_acwr") && (

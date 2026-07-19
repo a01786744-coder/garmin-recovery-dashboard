@@ -267,6 +267,9 @@ function Data({ s, onChange, onSwitchAccount }) {
       <Toggle label="Pause automatic syncing" checked={s.sync_paused}
         onChange={(v) => onChange({ sync_paused: v })}
         hint="stops background syncs; a manual sync still works" />
+      <Toggle label="Morning notification" checked={s.morning_notification}
+        onChange={(v) => onChange({ morning_notification: v })}
+        hint="once a day after sync: recovery score + the coach's headline" />
 
       <div className="border-t border-line/10 pt-4">
         <div className="mb-2 text-sm text-neutral-300">Export your health data</div>

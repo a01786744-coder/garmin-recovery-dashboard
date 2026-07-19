@@ -23,6 +23,18 @@ def test_trends_endpoint(tmp_path):
     assert resp.status_code == 200
     assert isinstance(resp.get_json()["days"], list)
 
+def test_trends_rows_carry_load_fields(tmp_path):
+    # The Training tab's ACWR risk chart reads these off the day rows — keep
+    # them in the trends contract.
+    client, p = _client(tmp_path)
+    m = {k: None for k in db.DAILY_FIELDS}
+    m["acwr_ratio"] = 1.4; m["acute_load"] = 300; m["chronic_load"] = 210
+    db.upsert_daily(p, "2026-06-20", m, recovery=60, strain=25)
+    rows = client.get("/api/trends?days=14").get_json()["days"]
+    row = next(r for r in rows if r["date"] == "2026-06-20")
+    assert row["acwr_ratio"] == 1.4
+    assert row["acute_load"] == 300 and row["chronic_load"] == 210
+
 def test_sync_status_endpoint(tmp_path):
     client, _ = _client(tmp_path)
     assert client.get("/api/sync-status").status_code == 200

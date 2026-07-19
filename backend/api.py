@@ -368,6 +368,88 @@ def create_app(db_path=cfg.DB_PATH, client_factory=None,
         db.update_coach_workout_status(db_path, row_id, "removed")
         return jsonify({"ok": True})
 
+    # --- v5.0 C1: training plan ---
+
+    @app.get("/api/coach/plan")
+    def plan_get():
+        return jsonify({"plan": db.get_training_plan(db_path)})
+
+    @app.post("/api/coach/plan/generate")
+    def plan_generate():
+        from backend import coach, plan as pl
+        s = _coach_settings()
+        if not coach.is_configured(s):
+            return jsonify({"error": "not_configured"}), 200
+        body = request.get_json(silent=True) or {}
+        try:
+            out = pl.generate_plan(db_path, s, body.get("race"),
+                                   today_str=_today_str())
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
+        except Exception as e:
+            log.warning("plan generate failed: %s", type(e).__name__)
+            return jsonify({"error": type(e).__name__}), 200
+        return jsonify({"plan": out})
+
+    @app.post("/api/coach/plan/adapt")
+    def plan_adapt():
+        from backend import coach, plan as pl
+        s = _coach_settings()
+        if not coach.is_configured(s):
+            return jsonify({"error": "not_configured"}), 200
+        try:
+            out = pl.adapt_plan(db_path, s, today_str=_today_str())
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
+        except Exception as e:
+            log.warning("plan adapt failed: %s", type(e).__name__)
+            return jsonify({"error": type(e).__name__}), 200
+        return jsonify({"plan": out})
+
+    @app.post("/api/coach/plan/push-week")
+    def plan_push_week():
+        # Writes to the user's Garmin account through the same explicit-confirm
+        # path as single workouts: the UI only calls this after "Send week to
+        # watch → Confirm".
+        from backend import workouts as wk
+        body = request.get_json(silent=True) or {}
+        stored = db.get_training_plan(db_path)
+        if not stored:
+            return jsonify({"error": "no plan"}), 404
+        week = next((w for w in stored["weeks"]
+                     if w.get("index") == body.get("week_index")), None)
+        if not week:
+            return jsonify({"error": "week not found"}), 404
+        designs = week.get("workouts") or []
+        if not designs:
+            return jsonify({"error": "week has no detailed workouts yet — "
+                                     "adapt the plan first"}), 400
+        if client_factory is None:
+            return jsonify({"error": "no client"}), 503
+        client = client_factory()
+        try:
+            client.login()
+            pushed = 0
+            for design in designs:
+                date = design.get("suggested_date")
+                if date and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(date)):
+                    date = None
+                result = client.push_running_workout(wk.design_to_garmin(design), date)
+                db.add_coach_workout(
+                    db_path, design.get("name") or "Plan workout", date, design,
+                    result.get("workout_id"), result.get("schedule"),
+                    "scheduled" if date else "uploaded")
+                pushed += 1
+        except Exception as e:
+            log.warning("plan week push failed: %s", type(e).__name__)
+            return jsonify({"error": type(e).__name__, "pushed": pushed}), 200
+        return jsonify({"ok": True, "pushed": pushed})
+
+    @app.delete("/api/coach/plan")
+    def plan_delete():
+        db.delete_training_plan(db_path)
+        return jsonify({"ok": True})
+
     @app.get("/api/sync-status")
     def sync_status():
         # data_dir included as a support diagnostic: makes "which database is
@@ -375,6 +457,15 @@ def create_app(db_path=cfg.DB_PATH, client_factory=None,
         body = db.get_last_sync(db_path) or {"status": "never"}
         body["data_dir"] = str(Path(db_path).parent)
         return jsonify(body)
+
+    @app.get("/api/notify/last-sync")
+    def notify_last_sync():
+        # Electron main polls this and shows the morning notification once per
+        # date; the backend only describes it (null = opted out / no data yet).
+        from backend import settings as st
+        from backend.notify import build_sync_notification
+        cfg = st.load_settings(Path(db_path).parent / "settings.json")
+        return jsonify({"notification": build_sync_notification(db_path, cfg)})
 
     @app.post("/api/sync")
     def manual_sync():

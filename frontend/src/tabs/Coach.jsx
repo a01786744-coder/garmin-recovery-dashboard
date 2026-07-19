@@ -3,6 +3,7 @@ import Card from "../components/ui/Card.jsx";
 import SectionTitle from "../components/ui/SectionTitle.jsx";
 import WorkoutCard from "../components/WorkoutCard.jsx";
 import CoachText, { Highlights } from "../components/CoachText.jsx";
+import TrainingPlan from "../components/TrainingPlan.jsx";
 import {
   getCoachStatus, getCoachBrief, getCoachChat, postCoachChat, clearCoachChat,
   getCoachWorkouts, deleteCoachWorkout,
@@ -212,6 +213,7 @@ export default function Coach() {
   return (
     <div className="space-y-4">
       <Brief />
+      <TrainingPlan />
       <ScheduledWorkouts />
       <Chat />
     </div>

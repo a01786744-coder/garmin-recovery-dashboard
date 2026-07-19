@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Tray, Menu, nativeImage, shell } = require("electron");
+const { app, BrowserWindow, Tray, Menu, nativeImage, shell, Notification } = require("electron");
 const { spawn } = require("child_process");
 const path = require("path");
 const fs = require("fs");
@@ -164,6 +164,43 @@ function notifyHiddenOnce() {
   }
 }
 
+// --- v5.0 D1: morning notification ---
+// Poll the backend for the day's notification payload and surface it as a
+// native notification once per date. The backend returns null when the user
+// opted out or there's no recovery score yet, so all policy lives server-side.
+
+const BAND_WORDS = { green: "green — good to go", yellow: "fair — pace yourself", red: "low — take it easy" };
+
+function morningFlagPath() {
+  return path.join(app.getPath("userData"), ".morning-notified");
+}
+
+async function pollMorningNotification() {
+  try {
+    const res = await fetch("http://127.0.0.1:5057/api/notify/last-sync");
+    const { notification: n } = await res.json();
+    if (!n || !n.date) return;
+    let last = null;
+    try { last = fs.readFileSync(morningFlagPath(), "utf-8").trim(); } catch (e) {}
+    if (n.date === last) return;
+    fs.writeFileSync(morningFlagPath(), n.date);
+    if (!Notification.isSupported()) return;
+    const note = new Notification({
+      title: `Recovery ${n.recovery_score} — ${BAND_WORDS[n.band] || n.band}`,
+      body: n.line || "Open the dashboard for today's details.",
+    });
+    note.on("click", () => showWindow());
+    note.show();
+  } catch (e) {
+    /* backend not up yet or offline — try again next tick */
+  }
+}
+
+function startMorningNotifier() {
+  setTimeout(pollMorningNotification, 8000);   // after first sync has a chance
+  setInterval(pollMorningNotification, 60_000);
+}
+
 function showWindow() {
   if (win && !win.isDestroyed()) {
     win.show();
@@ -178,6 +215,7 @@ app.whenReady().then(() => {
   applyLoginItem();
   watchSettings();
   createTray();
+  startMorningNotifier();
   const startHidden = process.argv.includes("--hidden")
     || app.getLoginItemSettings().wasOpenedAsHidden;
   // give Flask a moment to bind before the window fetches

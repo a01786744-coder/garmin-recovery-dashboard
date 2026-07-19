@@ -55,3 +55,10 @@ export const clearCoachChat = () => j("/api/coach/chat", { method: "DELETE" });
 export const getCoachWorkouts = () => j("/api/coach/workouts");
 export const sendCoachWorkout = (design, date) => jsonPost("/api/coach/workout/send", { design, date });
 export const deleteCoachWorkout = (id) => j(`/api/coach/workout/${id}`, { method: "DELETE" });
+
+// v5.0 training plan
+export const getPlan = () => j("/api/coach/plan");
+export const generatePlan = (race) => jsonPost("/api/coach/plan/generate", { race });
+export const adaptPlan = () => j("/api/coach/plan/adapt", { method: "POST" });
+export const pushPlanWeek = (weekIndex) => jsonPost("/api/coach/plan/push-week", { week_index: weekIndex });
+export const deletePlan = () => j("/api/coach/plan", { method: "DELETE" });

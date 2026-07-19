@@ -3,6 +3,25 @@
 All notable changes to the Garmin Recovery Dashboard. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/). Dates are YYYY-MM-DD.
 
+## [5.0.0] — 2026-07-18
+
+**The coach becomes a coach** — adaptive multi-week training plans, a morning
+verdict in your notifications, and an injury-risk chart keeping the ramp honest.
+
+### Added
+- **Training plan (Coach tab)**: give the coach a race (name, date, distance,
+  optional goal time) and it builds a week-by-week plan from your real fitness
+  data — detailed workouts for the next two weeks, outlines beyond. Each week
+  can be scheduled onto your watch in one confirmed "Send week" push. **Adapt
+  plan** reviews what you actually did (sessions, recovery, load) and revises
+  what's ahead. One active plan at a time; delete anytime.
+- **Morning notification**: after the day's first sync, a native notification
+  with your recovery score, band, and the coach's headline. Toggle in
+  Settings → Sync & Data. Never fires without a real score.
+- **Injury-risk load chart (Strain & Training)**: your acute:chronic workload
+  ratio over time on colored risk bands (undertraining / optimal / caution /
+  high risk) — the number behind "you ramped too fast", now visible.
+
 ## [4.4.0] — 2026-07-18
 
 **Visual redesign** — the "living app" pack: depth, texture, and a background
