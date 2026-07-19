@@ -14,6 +14,7 @@ export default function MiniArea({
   band, // optional {low, high} reference band (e.g. HRV baseline)
   yDomain = ["auto", "auto"],
   xTickFormatter,
+  yTickFormatter, // formats Y-axis ticks and the tooltip value (e.g. secs -> m:ss)
   yWidth = 30,
 }) {
   const hasData = data && data.some((d) => d.y != null);
@@ -35,10 +36,11 @@ export default function MiniArea({
         <XAxis dataKey="x" hide={!xTickFormatter} tickFormatter={xTickFormatter}
           stroke="#52525b" fontSize={10} tickLine={false} axisLine={false} minTickGap={40} />
         <YAxis domain={yDomain} stroke="#52525b" fontSize={10} width={yWidth}
-          tickLine={false} axisLine={false} />
+          tickLine={false} axisLine={false} tickFormatter={yTickFormatter} />
         <Tooltip
           contentStyle={{ background: "#18181b", border: "1px solid #27272a", borderRadius: 8, color: "#fff", fontSize: 12 }}
           labelFormatter={xTickFormatter || (() => "")}
+          formatter={yTickFormatter ? (v) => yTickFormatter(v) : undefined}
         />
         {area ? (
           <Area type="monotone" dataKey="y" stroke={color} strokeWidth={2}

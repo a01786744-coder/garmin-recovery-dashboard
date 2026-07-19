@@ -227,9 +227,10 @@ function Detail({ activity, units }) {
               <MiniArea height={140} color="#ef4444" area={false}
                 data={data.splits.map((s, i) => ({ x: i + 1, y: s.averageHR ?? null }))} />
               <SectionTitle>Pace by split</SectionTitle>
-              <MiniArea height={140} color="#22c55e" area={false}
+              <MiniArea height={140} color="#22c55e" area={false} yWidth={44}
+                yTickFormatter={secsToHms}
                 data={data.splits.map((s, i) => ({ x: i + 1, y: s.averageSpeed ? (units === "imperial" ? 1609.34 : 1000) / s.averageSpeed : null }))} />
-              <p className="text-[11px] text-neutral-600">Pace shown as seconds per {units === "imperial" ? "mile" : "km"} (lower is faster).</p>
+              <p className="text-[11px] text-neutral-600">Pace shown as min:sec per {units === "imperial" ? "mile" : "km"} (lower is faster).</p>
             </>
           )}
         </>

@@ -3,6 +3,13 @@
 All notable changes to the Garmin Recovery Dashboard. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/). Dates are YYYY-MM-DD.
 
+## [4.3.2] — 2026-07-18
+
+### Changed
+- **Pace-by-split chart now labels time as min:sec instead of raw seconds** — the
+  Y-axis and tooltip show `6:48` rather than `408`, matching how pace reads
+  everywhere else in the app.
+
 ## [4.3.1] — 2026-07-17
 
 ### Fixed
