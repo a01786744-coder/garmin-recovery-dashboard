@@ -3,6 +3,27 @@
 All notable changes to the Garmin Recovery Dashboard. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/). Dates are YYYY-MM-DD.
 
+## [4.4.0] — 2026-07-18
+
+**Visual redesign** — the "living app" pack: depth, texture, and a background
+that reflects your day.
+
+### Added
+- **Recovery-reactive background**: the top glow tints itself with today's
+  recovery band — accent-green when recovered, amber when fair, red when poor.
+  Falls back to the theme's static glow when no score yet.
+- **Hero metric cards**: the Recovery / Sleep / Strain gauges are larger and
+  their cards wear a soft wash + corner halo in each metric's own color.
+- **Hover glow**: cards lift with an accent ring and soft glow on hover.
+
+### Changed
+- **Amplified background glows** across all five themes (they were nearly
+  invisible at 5–9% — now 11–16%, wider, and fixed to the viewport).
+- **Film-grain texture** over the whole app kills gradient banding and adds
+  depth (subtler in light theme).
+- **Glass cards**: stronger blur, a lit-from-above inner highlight, and a
+  gradient panel instead of a flat fill.
+
 ## [4.3.2] — 2026-07-18
 
 ### Changed

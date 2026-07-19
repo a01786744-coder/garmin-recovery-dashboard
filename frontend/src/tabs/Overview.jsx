@@ -24,27 +24,29 @@ export default function Overview({ today, caps, onOpen, insights }) {
   return (
     <div className="space-y-4">
       <Grid className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="flex items-center justify-center py-6">
+        <Card tint={recColor} className="flex items-center justify-center py-7">
           <AnimatedGauge
             value={rec}
             label="Recovery"
             color={recColor}
+            size={164}
             nullText={recNullText}
             sublabel="Estimated · not a Garmin/Whoop score"
             onClick={() => onOpen("recovery")}
           />
         </Card>
         {show("sleep") && (
-          <Card className="flex items-center justify-center py-6">
-            <AnimatedGauge value={m.sleep_score} label="Sleep" color={ACCENT.sleep}
+          <Card tint={ACCENT.sleep} className="flex items-center justify-center py-7">
+            <AnimatedGauge value={m.sleep_score} label="Sleep" color={ACCENT.sleep} size={164}
               onClick={() => onOpen("sleep")} />
           </Card>
         )}
-        <Card className="flex items-center justify-center py-6">
+        <Card tint={ACCENT.strain} className="flex items-center justify-center py-7">
           <AnimatedGauge
             value={m.strain_score}
             label="Strain"
             color={ACCENT.strain}
+            size={164}
             sublabel="Estimated · custom metric"
             onClick={() => onOpen("strain")}
           />

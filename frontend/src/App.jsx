@@ -9,7 +9,7 @@ import {
 // "today" is excluded: it's the live time-aware recap, always the current day.
 const DAY_TABS = new Set(["overview", "sleep", "training"]);
 import { localToday, fmtDay, setDateStyle } from "./format.js";
-import { applyAppearance } from "./theme.js";
+import { applyAppearance, applyReactiveGlow } from "./theme.js";
 import DetailPanel from "./detail/DetailPanel.jsx";
 import { tabVisible } from "./caps.js";
 import SyncHeader from "./components/SyncHeader.jsx";
@@ -164,6 +164,12 @@ export default function App() {
 
   // Chart/date display style ("Jul 4" vs "07-04") follows the setting.
   useEffect(() => { setDateStyle(settings?.date_style); }, [settings?.date_style]);
+
+  // Recovery-reactive background: retint the top glow whenever today's score
+  // or the appearance settings (accent/bands, which redefine BAND) change.
+  useEffect(() => { applyReactiveGlow(today?.metrics?.recovery_score); },
+    [today?.metrics?.recovery_score, settings?.accent_color,
+     settings?.recovery_green, settings?.recovery_amber, settings?.theme]);
 
   const toggleTheme = () => {
     const next = theme === "light" ? "dark" : "light";

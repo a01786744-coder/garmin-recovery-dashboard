@@ -64,3 +64,13 @@ export function applyAppearance(settings) {
 
   setBands(Number(s.recovery_green), Number(s.recovery_amber));
 }
+
+// Recovery-reactive background: tint the top glow with today's band color
+// (green follows the accent, amber/red stay semantic). No score -> theme glow.
+export function applyReactiveGlow(score) {
+  const root = document.documentElement;
+  const b = band(score);
+  const rgb = b ? hexToRgb(BAND[b]) : null;
+  if (rgb) root.style.setProperty("--glow-top", `rgba(${rgb.join(",")}, 0.15)`);
+  else root.style.removeProperty("--glow-top");
+}
