@@ -203,8 +203,10 @@ function Recovery({ s, onChange }) {
           onChange={(e) => onChange({ hrv_weight: Number(e.target.value) / 100 })}
           className="mt-2 w-full" style={{ accentColor: "var(--accent)" }} />
         <p className="mt-1 text-[11px] text-neutral-600">
-          How much overnight HRV drives your recovery score vs resting heart rate.
-          Changing this re-scores your history. Default 70/30.
+          Splits the autonomic core of your recovery score (60% of the total)
+          between overnight HRV and resting heart rate. The rest comes from
+          sleep (25%), respiration (7%), skin temp (4%), and SpO2 (4%) when
+          available. Changing this re-scores your history. Default 70/30.
         </p>
       </div>
       <div>

@@ -127,12 +127,16 @@ def create_app(db_path=cfg.DB_PATH, client_factory=None,
             rhr_hist = db.get_history_before(db_path, "rhr", metrics["date"], window)
             have = min(sum(v is not None for v in hrv_hist),
                        sum(v is not None for v in rhr_hist))
-            # "Why this score" payloads for the detail panels.
+            # "Why this score" payloads for the detail panels. Extras built by
+            # the same helper the sync scorer uses, so they always agree.
+            from backend.sync import recovery_extras, strain_zones
             recovery_explain = rec.recovery_explanation(
                 metrics.get("hrv_last_night"), metrics.get("rhr"),
-                hrv_hist, rhr_hist, min_days=need, hrv_weight=cfg["hrv_weight"])
+                hrv_hist, rhr_hist, min_days=need, hrv_weight=cfg["hrv_weight"],
+                extras=recovery_extras(db_path, metrics["date"], metrics, window))
+            day_acts = db.get_activities_on(db_path, metrics["date"])
             strain_explain = rec.strain_breakdown(
-                db.get_activities_on(db_path, metrics["date"]), metrics)
+                day_acts, metrics, strain_zones(db_path, day_acts))
         else:
             have, recovery_explain, strain_explain = 0, None, None
         return jsonify({

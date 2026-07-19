@@ -3,6 +3,24 @@
 All notable changes to the Garmin Recovery Dashboard. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/). Dates are YYYY-MM-DD.
 
+## [5.1.0] — 2026-07-18
+
+**Precision pass on the two custom scores.** History is automatically
+re-scored on the first sync.
+
+### Changed
+- **Recovery is now multi-factor** (was HRV + resting HR only). Weighted blend
+  vs your own baselines: autonomic core 60% (HRV/RHR, still split by your
+  slider), sleep 25% (duration-vs-need + quality), respiration 7% (elevated
+  overnight breathing flags illness), skin temperature 4% and SpO2 4%
+  (penalty-only illness guards — they can never inflate the score). Factors
+  without data drop out and the rest re-balance; with nothing but HRV/RHR the
+  formula is exactly the old one. "Why this score" now shows every factor.
+- **Strain gets honest inputs**: activities without a Garmin training load now
+  use Edwards TRIMP from their recorded heart-rate-zone times (instead of the
+  crude duration×HR guess); steps only count above a 3,000-step sedentary
+  floor; floors climbed count. Same 0-100 scale.
+
 ## [5.0.0] — 2026-07-18
 
 **The coach becomes a coach** — adaptive multi-week training plans, a morning

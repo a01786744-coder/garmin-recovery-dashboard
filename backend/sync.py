@@ -59,13 +59,45 @@ _FETCH_ERRORS = (GarminAuthError, GarminRateLimitError, GarminConnectionError,
                  GarminMFARequired)
 
 
+def recovery_extras(db_path, date_str, row, window=BASELINE_WINDOW_DAYS):
+    """The optional recovery factors (sleep/resp/temp/SpO2) for one day, built
+    from the stored row + per-metric baselines. Shared by sync, rescore, and
+    /api/today so score and explanation always agree."""
+    row = row or {}
+    stages = [row.get(k) for k in ("deep_sleep_s", "light_sleep_s", "rem_sleep_s")]
+    total_s = sum(s for s in stages if s is not None) if any(s is not None for s in stages) else None
+    return {
+        "sleep_total_s": total_s,
+        "sleep_need_min": row.get("sleep_need_actual") or row.get("sleep_need_baseline"),
+        "sleep_score": row.get("sleep_score"),
+        "resp_today": row.get("resp_sleep"),
+        "resp_hist": db.get_history_before(db_path, "resp_sleep", date_str, window),
+        "skin_temp_dev": row.get("skin_temp_dev_c"),
+        "spo2_today": row.get("spo2_avg_sleep"),
+        "spo2_hist": db.get_history_before(db_path, "spo2_avg_sleep", date_str, window),
+    }
+
+
+def strain_zones(db_path, activities):
+    """HR-zone times for activities that lack a Garmin training load, so
+    strain can fall back to Edwards TRIMP instead of duration*HR."""
+    zones = {}
+    for a in activities or []:
+        if a.get("training_load") is None and a.get("activity_id"):
+            detail = db.get_activity_detail(db_path, a["activity_id"])
+            if detail and detail.get("hr_zones"):
+                zones[a["activity_id"]] = detail["hr_zones"]
+    return zones
+
+
 def _recovery_for(db_path, date_str, hrv_today, rhr_today, window=BASELINE_WINDOW_DAYS,
-                  hrv_weight=rec.DEFAULT_HRV_WEIGHT):
+                  hrv_weight=rec.DEFAULT_HRV_WEIGHT, row=None):
     hrv_hist = db.get_history_before(db_path, "hrv_last_night", date_str, window)
     rhr_hist = db.get_history_before(db_path, "rhr", date_str, window)
     return rec.recovery_score(hrv_today, rhr_today, hrv_hist, rhr_hist,
                               min_days=rec.min_days_for_window(window),
-                              hrv_weight=hrv_weight)
+                              hrv_weight=hrv_weight,
+                              extras=recovery_extras(db_path, date_str, row, window))
 
 
 def rescore_history(db_path, window=BASELINE_WINDOW_DAYS, hrv_weight=rec.DEFAULT_HRV_WEIGHT):
@@ -75,8 +107,9 @@ def rescore_history(db_path, window=BASELINE_WINDOW_DAYS, hrv_weight=rec.DEFAULT
     for d in db.get_dates(db_path):
         row = db.get_daily(db_path, d) or {}
         recovery = _recovery_for(db_path, d, row.get("hrv_last_night"),
-                                 row.get("rhr"), window, hrv_weight)
-        strain = rec.strain_score(db.get_activities_on(db_path, d), row)
+                                 row.get("rhr"), window, hrv_weight, row=row)
+        acts = db.get_activities_on(db_path, d)
+        strain = rec.strain_score(acts, row, strain_zones(db_path, acts))
         db.update_scores(db_path, d, recovery=recovery, strain=strain)
 
 
@@ -106,7 +139,7 @@ def run_sync(client, db_path, today=None, backfill_days=BASELINE_WINDOW_DAYS, pa
                 break
             metrics = {k: None for k in db.DAILY_FIELDS}
             metrics.update(base)
-            recovery = _recovery_for(db_path, d, base.get("hrv_last_night"), base.get("rhr"), backfill_days, hrv_weight)
+            recovery = _recovery_for(db_path, d, base.get("hrv_last_night"), base.get("rhr"), backfill_days, hrv_weight, row=base)
             # merge: a sparse baseline re-fetch must never wipe richer fields
             # a past full sync already stored for this day.
             db.upsert_daily(db_path, d, metrics, recovery, None, merge=True)
@@ -124,8 +157,9 @@ def run_sync(client, db_path, today=None, backfill_days=BASELINE_WINDOW_DAYS, pa
 
     db.upsert_activities(db_path, activities)
     recovery = _recovery_for(db_path, today_str,
-                             metrics.get("hrv_last_night"), metrics.get("rhr"), backfill_days, hrv_weight)
-    strain = rec.strain_score([a for a in activities if a.get("date") == today_str], metrics)
+                             metrics.get("hrv_last_night"), metrics.get("rhr"), backfill_days, hrv_weight, row=metrics)
+    todays_acts = [a for a in activities if a.get("date") == today_str]
+    strain = rec.strain_score(todays_acts, metrics, strain_zones(db_path, todays_acts))
     db.upsert_daily(db_path, today_str, metrics, recovery, strain)
     # Newly backfilled days extend the baseline; recompute stored scores so
     # history heals as data accumulates (cheap: local DB only).
