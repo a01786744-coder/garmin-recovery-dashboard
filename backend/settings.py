@@ -9,7 +9,8 @@ from pathlib import Path
 # Every built-in tab key. Must match the frontend TABS list — a key missing
 # here gets silently stripped from tab_order/hidden_tabs on save (the Today
 # tab was absent until v4.2.1 and kept jumping to the end of the bar).
-TAB_KEYS = ["overview", "today", "sleep", "training", "activities", "trends", "coach"]
+TAB_KEYS = ["overview", "today", "sleep", "training", "activities", "trends",
+            "records", "coach"]
 
 # v4.2 customization caps (defensive: a hand-edited or malicious file can't
 # balloon the layout).

@@ -187,6 +187,25 @@ body::after {
   }
 }
 
+/* Trophy room (Records tab): a light sweep glints across medal cards, and
+   fresh records get a soft pulsing NEW badge. Killed by reduced-motion. */
+@keyframes pr-sheen {
+  0%, 55% { transform: translateX(-160%) skewX(-18deg); }
+  100%    { transform: translateX(340%) skewX(-18deg); }
+}
+.pr-sheen::after {
+  content: "";
+  position: absolute;
+  top: 0; bottom: 0; left: 0;
+  width: 38%;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.07), transparent);
+  animation: pr-sheen 4.8s ease-in-out infinite;
+  animation-delay: var(--sheen-delay, 0s);   /* staggered per card */
+}
+@keyframes pr-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+.pr-pulse { animation: pr-pulse 1.6s ease-in-out infinite; }
+
 /* Slim themed scrollbar */
 *::-webkit-scrollbar { width: 10px; height: 10px; }
 *::-webkit-scrollbar-thumb { background: rgb(var(--neutral-800)); border-radius: 8px; }

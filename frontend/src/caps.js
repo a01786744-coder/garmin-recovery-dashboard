@@ -19,6 +19,7 @@ const TAB_CATS = {
   training: ["training_readiness", "training_load_acwr", "intensity_minutes", "stress"],
   activities: ["activities"],
   trends: ["hrv", "rhr", "vo2max", "race_predictions", "endurance", "personal_records"],
+  records: ["personal_records"],
 };
 
 export function tabVisible(caps, tab) {

@@ -3,6 +3,19 @@
 All notable changes to the Garmin Recovery Dashboard. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/). Dates are YYYY-MM-DD.
 
+## [5.2.0] — 2026-07-19
+
+### Added
+- **Records tab — the trophy room.** Every personal record your watch has
+  witnessed, as animated medal cards grouped by category (Running / Endurance /
+  Steps / Consistency): metallic SVG medals with a staggered glint sweep,
+  values that count up as they scroll into view, derived per-km pace on the
+  running records, "NEW" pulse on records under 30 days old, and how long each
+  has been standing. Hero stats (records held, latest, biggest day, last 30
+  days) plus **"The road to now"** — a self-drawing timeline of when each
+  record fell, flagging multi-record days. Hide or reorder it like any tab;
+  all animations respect reduced-motion.
+
 ## [5.1.0] — 2026-07-18
 
 **Precision pass on the two custom scores.** History is automatically

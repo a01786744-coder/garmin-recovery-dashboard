@@ -156,7 +156,8 @@ def test_tab_order_keeps_every_builtin_tab(tmp_path):
     # Regression: "today" was missing from TAB_KEYS, so validation silently
     # stripped it from tab_order and the Today tab jumped to the end of the bar.
     p = tmp_path / "settings.json"
-    full = ["overview", "today", "sleep", "training", "activities", "trends", "coach"]
+    full = ["overview", "today", "sleep", "training", "activities", "trends",
+            "records", "coach"]
     s = st.save_settings(p, {"tab_order": full, "hidden_tabs": ["today"]})
     assert s["tab_order"] == full
     assert s["hidden_tabs"] == ["today"]
