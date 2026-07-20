@@ -13,6 +13,7 @@ import MonthHeatmap from "../components/MonthHeatmap.jsx";
 import CompareChart from "../components/CompareChart.jsx";
 import LongTrends from "../components/LongTrends.jsx";
 import { PR_TYPES, prLabel, prValue } from "../records.js";
+import RacePredictorChart from "../components/RacePredictorChart.jsx";
 
 const ENDUR_CLASS = ["—", "Untrained", "Novice", "Intermediate", "Trained",
   "Well trained", "Expert", "Superior", "Elite"];
@@ -107,27 +108,14 @@ export default function Trends({ today, trends, caps, units, onOpen }) {
         </Card>
       )}
 
-      <Grid className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {show("race_predictions") && (
-        <Card>
-          <SectionTitle sub="Garmin race time predictions">Race predictions</SectionTitle>
-          {["race_5k", "race_10k", "race_hm", "race_marathon"].every((k) => perf[k] == null) ? (
-            <NoData />
-          ) : (
-            <div className="grid grid-cols-2 gap-3">
-              {[["race_5k", "5K"], ["race_10k", "10K"], ["race_hm", "Half"], ["race_marathon", "Marathon"]].map(
-                ([k, label]) => (
-                  <div key={k} className="rounded-xl bg-neutral-950/40 p-3">
-                    <div className="text-xs text-neutral-500">{label}</div>
-                    <div className="text-xl font-bold text-neutral-50">{secsToHms(perf[k])}</div>
-                  </div>
-                )
-              )}
-            </div>
-          )}
-        </Card>
-        )}
+      {show("race_predictions") && (
+      <Card>
+        <SectionTitle sub="Garmin's predicted finish times, tracked over time">Race predictor</SectionTitle>
+        <RacePredictorChart perf={trends?.perf} />
+      </Card>
+      )}
 
+      <Grid className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {show("personal_records") && (
         <Card>
           <SectionTitle sub="All-time bests">Personal records</SectionTitle>

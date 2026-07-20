@@ -21,7 +21,7 @@ def test_notification_payload_has_score_band_and_date(tmp_path):
     p = _db(tmp_path, recovery=72)
     n = build_sync_notification(p, BASE)
     assert n == {"date": "2026-07-18", "recovery_score": 72, "band": "green",
-                 "line": None}
+                 "line": None, "planned": None}
 
 
 def test_notification_band_uses_custom_cutoffs(tmp_path):
@@ -77,3 +77,20 @@ def test_notify_endpoint_null_when_disabled(tmp_path):
 def test_morning_notification_defaults_on():
     import backend.settings as st
     assert st.DEFAULTS["morning_notification"] is True
+
+
+def test_notification_includes_planned_session(tmp_path):
+    p = _db(tmp_path)
+    db.save_training_plan(p, {"name": "10k", "date": "2026-09-01",
+                              "distance_km": 10, "goal_time_s": None},
+                          [{"index": 1, "start": "2026-07-13", "focus": "base",
+                            "target_km": 30, "long_run_km": 10, "summary": "s",
+                            "workouts": [{"name": "Tempo 5k", "suggested_date": "2026-07-18",
+                                          "rationale": "r", "steps": []}]}], None)
+    n = build_sync_notification(p, BASE)
+    assert n["planned"] == "Tempo 5k"
+
+
+def test_notification_planned_none_without_plan(tmp_path):
+    n = build_sync_notification(_db(tmp_path), BASE)
+    assert n["planned"] is None

@@ -6,9 +6,25 @@ import CoachText, { Highlights } from "../components/CoachText.jsx";
 import TrainingPlan from "../components/TrainingPlan.jsx";
 import {
   getCoachStatus, getCoachBrief, getCoachChat, postCoachChat, clearCoachChat,
-  getCoachWorkouts, deleteCoachWorkout,
+  getCoachWorkouts, deleteCoachWorkout, getPlan,
 } from "../api.js";
-import { fmtDay } from "../format.js";
+import { fmtDay, localToday } from "../format.js";
+
+// Today's planned session from the active plan (matches suggested_date).
+function usePlannedSession() {
+  const [session, setSession] = useState(undefined); // undefined=loading, null=none
+  useEffect(() => {
+    getPlan().then((r) => {
+      const today = localToday();
+      const weeks = r.plan?.weeks || [];
+      let found = null;
+      for (const w of weeks) for (const wk of w.workouts || [])
+        if (wk.suggested_date === today) found = wk;
+      setSession(found);
+    }).catch(() => setSession(null));
+  }, []);
+  return session;
+}
 
 function Setup() {
   return (
@@ -32,6 +48,7 @@ function Setup() {
 function Brief() {
   const [brief, setBrief] = useState(null);
   const [loading, setLoading] = useState(true);
+  const planned = usePlannedSession();
   const load = async (force = false) => {
     setLoading(true);
     try { setBrief(await getCoachBrief(force)); } catch { setBrief({ error: "network" }); }
@@ -48,6 +65,14 @@ function Brief() {
           ↻ Regenerate
         </button>
       </div>
+      {planned && (
+        <div className="mt-2 flex items-center gap-2 rounded-lg border border-accent/20 bg-accent/[0.06] px-3 py-2 text-sm">
+          <span className="text-accent">📋</span>
+          <span className="text-neutral-400">Today's plan:</span>
+          <span className="font-medium text-neutral-100">{planned.name}</span>
+          <span className="ml-auto text-[11px] text-neutral-500">the coach factors this in below</span>
+        </div>
+      )}
       {loading ? (
         <div className="mt-2 space-y-2">
           <div className="h-4 w-3/4 animate-pulse rounded bg-neutral-800" />

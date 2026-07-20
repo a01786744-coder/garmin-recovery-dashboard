@@ -99,3 +99,34 @@ def test_adapt_without_plan_raises(tmp_path):
     p = _db(tmp_path)
     with pytest.raises(ValueError):
         plan.adapt_plan(p, SETTINGS, today_str=TODAY)
+
+
+# --- v5.3 P1: plan-aware coach helpers ---
+
+def test_todays_session_finds_workout_for_date(tmp_path):
+    p = _db(tmp_path)
+    db.save_training_plan(p, _race(), [WK1, WK2], None)
+    s = plan.todays_session(p, "2026-07-21")     # WK1 has a workout that day
+    assert s and s["name"] == "Easy run"
+    assert plan.todays_session(p, "2026-07-22") is None   # nothing scheduled
+    assert plan.todays_session(p, "2026-07-21", ) is not None
+
+
+def test_todays_session_none_without_plan(tmp_path):
+    assert plan.todays_session(_db(tmp_path), "2026-07-21") is None
+
+
+def test_plan_context_summarizes_week_and_today(tmp_path):
+    p = _db(tmp_path)
+    db.save_training_plan(p, _race(), [WK1, WK2], None)
+    ctx = plan.plan_context(p, "2026-07-21")
+    assert ctx["race"]["name"] == "Half marathon"
+    assert ctx["this_week"]["index"] == 1
+    assert ctx["today_planned"]["name"] == "Easy run"
+    # a day inside week 1 with no scheduled workout -> week present, today null
+    ctx2 = plan.plan_context(p, "2026-07-22")
+    assert ctx2["this_week"]["index"] == 1 and ctx2["today_planned"] is None
+
+
+def test_plan_context_none_without_plan(tmp_path):
+    assert plan.plan_context(_db(tmp_path), "2026-07-21") is None

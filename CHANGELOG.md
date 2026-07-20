@@ -3,7 +3,23 @@
 All notable changes to the Garmin Recovery Dashboard. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/). Dates are YYYY-MM-DD.
 
-## [5.2.0] — 2026-07-19
+## [5.3.0] — 2026-07-19
+
+### Added
+- **Tomorrow's recovery forecast** (Overview). Projects tomorrow morning's
+  recovery from today's strain, your rolling sleep debt, training-load ramp
+  (ACWR), and HRV trajectory — a transparent estimate over already-stored data,
+  no new fetches. Shows the projected band + score, a poor↔full-sleep range
+  bar (tonight's sleep still decides where you land), and the drivers moving
+  it. Only appears with enough recent history.
+- **Race-predictor trend** (Trends). Garmin's daily 5K/10K/half/marathon
+  predictions — stored all along, never charted — now plotted over time with a
+  per-distance toggle, your best, and the improvement since the range start.
+- **Plan-aware coach.** The daily brief and morning notification now know your
+  training plan: the brief reconciles today's planned session with how you're
+  actually recovering and, when it recommends a change, hands you the swapped
+  workout to send to your watch. The notification names the planned session,
+  and the brief shows a "Today's plan" strip.
 
 ### Added
 - **Records tab — the trophy room.** Every personal record your watch has

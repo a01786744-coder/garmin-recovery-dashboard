@@ -10,6 +10,7 @@ import { round, secsToHm, titleCase } from "../format.js";
 import { visible } from "../caps.js";
 import InsightsSection from "../components/Insights.jsx";
 import Journal from "../components/Journal.jsx";
+import ForecastCard from "../components/ForecastCard.jsx";
 
 export default function Overview({ today, caps, onOpen, insights }) {
   const m = today?.metrics || {};
@@ -56,6 +57,8 @@ export default function Overview({ today, caps, onOpen, insights }) {
       <p className="text-center text-xs text-neutral-600">
         Recovery &amp; Strain are custom estimates from your Garmin data — not official Garmin or Whoop metrics.
       </p>
+
+      {insights?.forecast && <ForecastCard forecast={insights.forecast} />}
 
       <InsightsSection insights={insights} caps={caps} />
 

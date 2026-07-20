@@ -213,10 +213,15 @@ def create_app(db_path=cfg.DB_PATH, client_factory=None,
     @app.get("/api/insights")
     def insights():
         from backend import insights as ins
+        from backend import forecast as fc
+        from backend import settings as st
         daily = db.get_trends(db_path, 90)
         acts = db.get_recent_activities(db_path, 50)
         primary = db.get_primary_day(db_path) or {}
+        scfg = st.load_settings(Path(db_path).parent / "settings.json")
         return jsonify({
+            "forecast": fc.forecast_recovery(daily, scfg["recovery_green"],
+                                             scfg["recovery_amber"]),
             "weekly": ins.weekly_recap(daily, acts),
             "streaks": ins.streaks(daily, acts),
             "insights": ins.auto_insights(daily),

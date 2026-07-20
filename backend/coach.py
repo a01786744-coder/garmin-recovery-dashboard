@@ -47,7 +47,7 @@ _PERF_FIELDS = ["vo2max", "fitness_age", "race_5k", "race_10k", "race_hm",
                 "heat_acclimation", "altitude_acclimation"]
 
 
-def build_context(db_path):
+def build_context(db_path, today_str=None):
     """Compact JSON-able snapshot of the athlete. This is the complete set of
     data that ever leaves the machine when the coach is used."""
     days = []
@@ -65,13 +65,21 @@ def build_context(db_path):
                 "tags": [t for t, v in (j.get("tags") or {}).items() if v],
                 "note": (j.get("note") or "")[:200]}
                for j in db.get_journal_range(db_path, 14)]
-    return {
+    ctx = {
         "days": days,
         "recent_activities": acts,
         "performance": {k: perf.get(k) for k in _PERF_FIELDS
                         if perf.get(k) is not None},
         "journal": [j for j in journal if j["tags"] or j["note"]],
     }
+    # v5.3: fold in the active training plan so the coach can reconcile the
+    # planned session with how the athlete is actually recovering.
+    if today_str:
+        from backend import plan as _plan
+        pctx = _plan.plan_context(db_path, today_str)
+        if pctx:
+            ctx["training_plan"] = pctx
+    return ctx
 
 
 # ---- structured output schema -------------------------------------------
@@ -247,7 +255,7 @@ def _call_claude(settings, messages, schema=None, max_tokens=4000):
 
 def _context_block(db_path, today_str):
     return (f"Today is {today_str}. Athlete data (JSON):\n"
-            + json.dumps(build_context(db_path), separators=(",", ":")))
+            + json.dumps(build_context(db_path, today_str), separators=(",", ":")))
 
 
 def daily_brief(db_path, settings, today_str, force=False):
@@ -259,8 +267,15 @@ def daily_brief(db_path, settings, today_str, force=False):
             return {**cached, "cached": True}
     prompt = (_context_block(db_path, today_str)
               + "\n\nWrite today's morning brief: how the athlete is doing, what "
-                "stands out, and what today's training should look like. If a "
-                "structured run makes sense today, include it as the workout.")
+                "stands out, and what today's training should look like. "
+                "If `training_plan` is present, reconcile today's planned "
+                "session (training_plan.today_planned) with how they're actually "
+                "recovering: if recovery supports it, confirm the planned "
+                "session; if not, recommend an adjustment (easier session, swap, "
+                "or rest) and explain why. When you prescribe a workout different "
+                "from the plan, include it as the structured `workout` so they "
+                "can send it to their watch. If a structured run makes sense "
+                "today, include it as the workout.")
     data = _call_claude(settings, [{"role": "user", "content": prompt}])
     db.upsert_coach_brief(db_path, today_str, data["reply"], data.get("workout"),
                           data.get("highlights"))

@@ -38,9 +38,12 @@ def build_sync_notification(db_path, settings):
                              green=settings.get("recovery_green", 67),
                              amber=settings.get("recovery_amber", 34))
     brief = db.get_coach_brief(db_path, day["date"])
+    from backend import plan
+    session = plan.todays_session(db_path, day["date"])
     return {
         "date": day["date"],
         "recovery_score": score,
         "band": band,
         "line": _first_sentence(brief["text"]) if brief else None,
+        "planned": session["name"] if session else None,
     }

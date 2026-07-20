@@ -185,9 +185,10 @@ async function pollMorningNotification() {
     if (n.date === last) return;
     fs.writeFileSync(morningFlagPath(), n.date);
     if (!Notification.isSupported()) return;
+    const planLine = n.planned ? `Plan: ${n.planned}. ` : "";
     const note = new Notification({
       title: `Recovery ${n.recovery_score} — ${BAND_WORDS[n.band] || n.band}`,
-      body: n.line || "Open the dashboard for today's details.",
+      body: planLine + (n.line || "Open the dashboard for today's details."),
     });
     note.on("click", () => showWindow());
     note.show();

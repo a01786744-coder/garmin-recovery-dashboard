@@ -51,6 +51,57 @@ PLAN_RESPONSE_SCHEMA = {
 }
 
 
+def _week_for(weeks, today_str):
+    """The plan week containing `today_str` (Mon–Sun), or None."""
+    for w in weeks or []:
+        start = w.get("start")
+        if not start:
+            continue
+        try:
+            d0 = dt.date.fromisoformat(start)
+        except ValueError:
+            continue
+        if d0 <= dt.date.fromisoformat(today_str) <= d0 + dt.timedelta(days=6):
+            return w
+    return None
+
+
+def todays_session(db_path, today_str):
+    """The workout design scheduled for `today_str` in the active plan, or
+    None. Matches on each workout's suggested_date."""
+    stored = db.get_training_plan(db_path)
+    if not stored:
+        return None
+    for w in stored["weeks"]:
+        for wk in w.get("workouts") or []:
+            if wk.get("suggested_date") == today_str:
+                return wk
+    return None
+
+
+def plan_context(db_path, today_str):
+    """Compact plan snapshot for the coach: the race, this week's outline, and
+    today's planned session (if any). None when no plan is active."""
+    stored = db.get_training_plan(db_path)
+    if not stored:
+        return None
+    week = _week_for(stored["weeks"], today_str)
+    days_to_race = None
+    try:
+        days_to_race = (dt.date.fromisoformat(stored["race"]["date"])
+                        - dt.date.fromisoformat(today_str)).days
+    except (ValueError, KeyError, TypeError):
+        pass
+    return {
+        "race": stored["race"],
+        "days_to_race": days_to_race,
+        "this_week": None if not week else {
+            "index": week.get("index"), "focus": week.get("focus"),
+            "target_km": week.get("target_km"), "summary": week.get("summary")},
+        "today_planned": todays_session(db_path, today_str),
+    }
+
+
 def _validate_race(race, today_str):
     if not isinstance(race, dict):
         raise ValueError("race required")
