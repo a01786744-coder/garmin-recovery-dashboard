@@ -66,11 +66,11 @@ Both builds are **unsigned**, so each OS shows a one-time warning the first time
 
 - **Windows:** double-click the `.exe` → "Windows protected your PC" → **More
   info** → **Run anyway** → installs per-user (no admin) with a desktop shortcut.
-- **macOS:** open the `.dmg`, drag the app to Applications, then **right-click
-  (or Control-click) the app → Open → Open** (a plain double-click is blocked by
-  Gatekeeper the first time; right-click → Open clears it permanently). If macOS
-  still says it's "damaged," run once in Terminal:
-  `xattr -cr "/Applications/Garmin Recovery Dashboard.app"`.
+- **macOS:** open the `.dmg`, drag the app to Applications, then clear the
+  Gatekeeper block by running once in Terminal:
+  `xattr -dr com.apple.quarantine "/Applications/Garmin Recovery Dashboard.app"`
+  and opening the app normally. Full step-by-step (with a no-Terminal
+  alternative and every error message explained): **[docs/MAC-INSTALL.md](docs/MAC-INSTALL.md)**.
 
 > The macOS build targets **Apple Silicon (M1/M2/M3+)**. An Intel-Mac build can be
 > added as a second CI target if a friend needs it.

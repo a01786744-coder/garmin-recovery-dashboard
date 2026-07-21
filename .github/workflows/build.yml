@@ -81,3 +81,49 @@ jobs:
             [ "$i" = 5 ] && { echo "upload failed after 5 attempts"; exit 1; }
             echo "upload attempt $i failed; retrying in 20s"; sleep 20
           done
+
+      # Prepend macOS Gatekeeper-bypass instructions to the release notes, using
+      # the ACTUAL built .dmg name (so the filename is always correct — no manual
+      # step per release). Runs only on the mac job, after the release exists.
+      - name: Add macOS install instructions to the release
+        if: matrix.platform == 'mac' && startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="$GITHUB_REF_NAME"
+          DMG=$(basename "$(ls release/*.dmg | head -n1)")
+          BODY=$(gh release view "$TAG" --json body -q .body)
+          case "$BODY" in
+            *"macOS install (Apple Silicon)"*)
+              echo "macOS section already present; skipping."; exit 0 ;;
+          esac
+          {
+            echo "## 🍎 macOS install (Apple Silicon)"
+            echo
+            echo "The Mac build is **unsigned**, so macOS Gatekeeper blocks it on first launch"
+            echo "(it may say the app is \"damaged\" or \"cannot be checked for malicious software\")."
+            echo "This is expected for an open-source app — it is safe to run."
+            echo
+            echo "1. Download **\`$DMG\`** from the Assets below."
+            echo "2. Open it and drag the app onto **Applications**."
+            echo "3. Run this once in **Terminal** to clear the Gatekeeper flag:"
+            echo
+            echo '   ```bash'
+            echo '   xattr -dr com.apple.quarantine "/Applications/Garmin Recovery Dashboard.app"'
+            echo '   ```'
+            echo
+            echo "4. Open the app normally."
+            echo
+            echo "Prefer not to use Terminal, or want every error message explained? See the"
+            echo "**[full macOS install guide](https://github.com/${GITHUB_REPOSITORY}/blob/${TAG}/docs/MAC-INSTALL.md)**."
+            echo
+            echo "---"
+            echo
+            printf '%s\n' "$BODY"
+          } > release-notes.md
+          for i in 1 2 3 4 5; do
+            gh release edit "$TAG" --notes-file release-notes.md && break
+            [ "$i" = 5 ] && { echo "notes update failed after 5 attempts"; exit 1; }
+            echo "notes update attempt $i failed; retrying in 15s"; sleep 15
+          done

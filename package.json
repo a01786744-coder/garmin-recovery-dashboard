@@ -1,6 +1,6 @@
 {
   "name": "garmin-dashboard",
-  "version": "5.4.0",
+  "version": "5.4.1",
   "description": "Local Whoop-style recovery dashboard sourced from Garmin Connect.",
   "author": "rodri",
   "main": "electron/main.js",

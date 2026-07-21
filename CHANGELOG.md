@@ -3,6 +3,17 @@
 All notable changes to the Garmin Recovery Dashboard. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/). Dates are YYYY-MM-DD.
 
+## [5.4.1] — 2026-07-19
+
+### Added
+- **macOS install guide** ([docs/MAC-INSTALL.md](docs/MAC-INSTALL.md)):
+  step-by-step instructions for getting the unsigned Mac build past Gatekeeper
+  (Terminal one-liner + a no-Terminal alternative, every error message
+  explained), linked from the README.
+- **Release notes now include the macOS install steps automatically**, with the
+  exact `.dmg` filename for that release injected by CI — so the instructions are
+  always correct without any manual step per version.
+
 ## [5.4.0] — 2026-07-19
 
 ### Changed
