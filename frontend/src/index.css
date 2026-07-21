@@ -206,6 +206,40 @@ body::after {
 @keyframes pr-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 .pr-pulse { animation: pr-pulse 1.6s ease-in-out infinite; }
 
+/* Tab / widget customization (edit mode). Themed react-grid-layout: the drop
+   placeholder and resize handle follow the accent instead of RGL's default
+   red/gray, and a soft dashed frame marks draggable widgets. */
+.react-grid-item.react-grid-placeholder {
+  background: rgb(var(--accent-rgb) / 0.16) !important;
+  border: 1.5px dashed rgb(var(--accent-rgb) / 0.55);
+  border-radius: 16px !important;
+  opacity: 1 !important;
+  transition: transform 140ms ease;
+}
+.react-grid-item > .react-resizable-handle {
+  width: 18px; height: 18px;
+  right: 3px; bottom: 3px;
+}
+.react-grid-item > .react-resizable-handle::after {
+  content: "";
+  position: absolute; right: 4px; bottom: 4px;
+  width: 9px; height: 9px;
+  border-right: 2px solid rgb(var(--accent-rgb) / 0.75);
+  border-bottom: 2px solid rgb(var(--accent-rgb) / 0.75);
+  border-bottom-right-radius: 3px;
+}
+.react-grid-item.react-draggable-dragging { z-index: 30; }
+.react-grid-item.react-draggable-dragging > * { cursor: grabbing; }
+
+/* A softly pulsing accent frame around widgets while editing a custom tab. */
+@keyframes edit-frame {
+  0%, 100% { opacity: 0.5; }
+  50%      { opacity: 0.85; }
+}
+.edit-frame {
+  animation: edit-frame 2.4s ease-in-out infinite;
+}
+
 /* Slim themed scrollbar */
 *::-webkit-scrollbar { width: 10px; height: 10px; }
 *::-webkit-scrollbar-thumb { background: rgb(var(--neutral-800)); border-radius: 8px; }

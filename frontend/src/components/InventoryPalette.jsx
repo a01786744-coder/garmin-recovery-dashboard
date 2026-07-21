@@ -1,9 +1,11 @@
 import React, { useState } from "react";
+import { motion } from "framer-motion";
 import { WIDGETS, WIDGET_CATEGORIES } from "../widgets/registry.jsx";
 
-// A Minecraft creative-inventory styled picker. A grid of beveled item-slots,
-// one per available widget; category chips + search filter it; click a slot to
-// add it to the current custom tab. Slots already on the tab are dimmed.
+// A widget picker: a grid of slot-tiles, one per available widget; category
+// chips + search filter it; click a tile to drop it onto the current board.
+// Tiles already on the board are dimmed with a check. Styled to match the app
+// (dark glass, accent) rather than a raw pixel skin.
 export default function InventoryPalette({ present, onAdd, onClose }) {
   const [cat, setCat] = useState("All");
   const [q, setQ] = useState("");
@@ -13,60 +15,83 @@ export default function InventoryPalette({ present, onAdd, onClose }) {
     (!q || w.name.toLowerCase().includes(q.toLowerCase())));
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
       onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-2xl rounded-2xl border-2 border-[#1b1b1f] bg-[#c6c6c6] p-3 shadow-2xl dark:bg-[#2b2b30]"
-        style={{ imageRendering: "pixelated" }}>
-        <div className="mb-2 flex items-center justify-between">
-          <div className="font-bold tracking-wide text-neutral-800 dark:text-neutral-100"
-            style={{ fontFamily: "monospace" }}>Widget Inventory</div>
-          <button onClick={onClose}
-            className="rounded-md px-2 py-0.5 text-sm text-neutral-700 hover:bg-black/10 dark:text-neutral-300">✕</button>
+      <motion.div onClick={(e) => e.stopPropagation()}
+        initial={{ opacity: 0, scale: 0.96, y: 8 }} animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ type: "spring", stiffness: 300, damping: 26 }}
+        className="flex max-h-[82vh] w-full max-w-2xl flex-col rounded-2xl border border-line/10 glass-card p-0 shadow-2xl">
+
+        {/* header */}
+        <div className="flex items-center gap-2.5 border-b border-line/10 px-4 py-3">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent/15 text-accent text-lg">▦</span>
+          <div>
+            <div className="text-sm font-semibold text-neutral-100">Widget library</div>
+            <div className="text-[11px] text-neutral-500">{shown.length} widget{shown.length === 1 ? "" : "s"} · click to place</div>
+          </div>
+          <button onClick={onClose} aria-label="Close"
+            className="ml-auto flex h-8 w-8 items-center justify-center rounded-lg text-neutral-400 hover:bg-neutral-800/60 hover:text-neutral-100">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
+          </button>
         </div>
 
-        <div className="mb-2 flex flex-wrap items-center gap-1.5">
+        {/* filters */}
+        <div className="flex flex-wrap items-center gap-1.5 px-4 py-3">
           {["All", ...WIDGET_CATEGORIES].map((c) => (
             <button key={c} onClick={() => setCat(c)}
-              className={"rounded-md px-2.5 py-1 text-xs font-medium " +
-                (cat === c ? "bg-accent text-white"
-                  : "bg-black/10 text-neutral-700 hover:bg-black/20 dark:bg-white/10 dark:text-neutral-200")}>
+              className={"rounded-lg px-3 py-1.5 text-xs font-medium transition-colors " +
+                (cat === c
+                  ? "bg-accent/15 text-neutral-50 ring-1 ring-accent/30"
+                  : "text-neutral-400 hover:bg-neutral-800/60 hover:text-neutral-200")}>
               {c}
             </button>
           ))}
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search…"
-            className="ml-auto w-32 rounded-md border border-black/10 bg-white/70 px-2 py-1 text-xs text-neutral-800 outline-none dark:bg-black/30 dark:text-neutral-100" />
+          <div className="relative ml-auto">
+            <svg viewBox="0 0 24 24" width="14" height="14" className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-500"
+              fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4-4" /></svg>
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search…"
+              className="w-36 rounded-lg border border-line/10 bg-neutral-950/60 py-1.5 pl-8 pr-2 text-xs text-neutral-100 placeholder:text-neutral-600 focus:border-accent/40 focus:outline-none" />
+          </div>
         </div>
 
-        {/* Inventory slot grid */}
-        <div className="grid max-h-[55vh] grid-cols-4 gap-1.5 overflow-y-auto rounded-lg bg-[#8b8b8b] p-2 dark:bg-[#1c1c20] sm:grid-cols-6">
-          {shown.map((w) => {
+        {/* slot grid */}
+        <div className="grid flex-1 grid-cols-3 gap-2 overflow-y-auto px-4 pb-3 sm:grid-cols-4">
+          {shown.map((w, i) => {
             const added = has.has(w.id);
             return (
-              <button key={w.id} disabled={added} onClick={() => onAdd(w.id)}
-                title={added ? `${w.name} (already added)` : `Add ${w.name}`}
-                className={"group relative flex aspect-square flex-col items-center justify-center gap-1 border-2 p-1 text-center transition " +
-                  "border-t-[#ffffff88] border-l-[#ffffff88] border-b-[#00000066] border-r-[#00000066] " +
-                  (added ? "cursor-default bg-[#5a5a5a] opacity-50"
-                    : "bg-[#8f8f8f] hover:bg-[#a6a6a6] dark:bg-[#3a3a40] dark:hover:bg-[#4a4a52]")}>
-                <span className="text-xl leading-none">{w.icon}</span>
-                <span className="line-clamp-2 text-[9px] font-medium leading-tight text-neutral-900 dark:text-neutral-100">
+              <motion.button key={w.id} disabled={added} onClick={() => onAdd(w.id)}
+                initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: Math.min(i * 0.02, 0.3) }}
+                whileHover={added ? undefined : { y: -3 }}
+                title={added ? `${w.name} — already on this board` : `Add ${w.name}`}
+                className={"group relative flex aspect-square flex-col items-center justify-center gap-2 rounded-xl border p-2 text-center transition-colors " +
+                  (added
+                    ? "cursor-default border-line/5 bg-neutral-950/50 opacity-45"
+                    : "border-line/10 bg-neutral-800/40 hover:border-accent/40 hover:bg-accent/[0.07]")}>
+                <span className={"flex h-11 w-11 items-center justify-center rounded-xl text-2xl transition-colors " +
+                  (added ? "bg-neutral-800/60" : "bg-neutral-950/50 group-hover:bg-accent/15")}>
+                  {w.icon}
+                </span>
+                <span className="line-clamp-2 text-[11px] font-medium leading-tight text-neutral-200">
                   {w.name}
                 </span>
-                {added && <span className="absolute right-0.5 top-0.5 text-[9px] text-emerald-300">✓</span>}
-              </button>
+                {added
+                  ? <span className="absolute right-1.5 top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500/20 text-[9px] text-emerald-300">✓</span>
+                  : <span className="absolute right-1.5 top-1.5 text-neutral-600 opacity-0 transition-opacity group-hover:opacity-100">＋</span>}
+              </motion.button>
             );
           })}
           {shown.length === 0 && (
-            <div className="col-span-full py-6 text-center text-xs text-neutral-700 dark:text-neutral-400">
-              No widgets match.
+            <div className="col-span-full py-10 text-center text-xs text-neutral-500">
+              No widgets match “{q}”.
             </div>
           )}
         </div>
-        <p className="mt-2 text-center text-[10px] text-neutral-700 dark:text-neutral-400">
-          Click a slot to drop it into your tab. Resize &amp; drag widgets once they're placed.
-        </p>
-      </div>
+
+        <div className="border-t border-line/10 px-4 py-2.5 text-center text-[11px] text-neutral-500">
+          Placed widgets can be dragged and resized while editing.
+        </div>
+      </motion.div>
     </div>
   );
 }

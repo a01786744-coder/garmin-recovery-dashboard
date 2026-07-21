@@ -40,19 +40,33 @@ export default function CustomTab({ tab, editMode, onChangeLayout, onAddWidget, 
   return (
     <div>
       {editMode && (
-        <div className="mb-3 flex items-center gap-2">
+        <div className="mb-3 flex flex-wrap items-center gap-2">
           <button onClick={() => setShowPalette(true)}
-            className="rounded-lg border border-emerald-500/40 px-3 py-1.5 text-sm font-medium text-emerald-300 hover:bg-accent/90/10">
+            className="flex items-center gap-1.5 rounded-lg border border-dashed border-accent/40 px-3 py-1.5 text-sm font-medium text-accent transition-colors hover:bg-accent/10">
             ＋ Add widget
           </button>
-          <span className="text-[11px] text-neutral-500">Drag to move · drag a corner to resize · ✕ to remove</span>
+          <span className="rounded-lg bg-neutral-900/50 px-2.5 py-1 text-[11px] text-neutral-500">
+            Drag to move · pull a corner to resize · ✕ to remove
+          </span>
         </div>
       )}
 
       {layout.length === 0 ? (
-        <Card>
-          <NoData label={editMode ? "Empty tab — tap ＋ Add widget to fill it"
-            : "This tab is empty. Tap ✎ Edit, then ＋ Add widget."} />
+        <Card hover={false} className="flex flex-col items-center justify-center gap-3 py-14 text-center">
+          <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-accent/10 text-3xl text-accent ring-1 ring-accent/20">▦</span>
+          <div>
+            <div className="text-sm font-semibold text-neutral-200">This board is empty</div>
+            <div className="mt-1 text-xs text-neutral-500">
+              {editMode ? "Add widgets from the library to build your view."
+                : "Tap ✎ Edit, then ＋ Add widget to start building."}
+            </div>
+          </div>
+          {editMode && (
+            <button onClick={() => setShowPalette(true)}
+              className="mt-1 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-accent/90">
+              ＋ Add your first widget
+            </button>
+          )}
         </Card>
       ) : (
         <RGL className="layout" layouts={{ lg: layout }} cols={COLS} breakpoints={BREAKPOINTS}
@@ -62,15 +76,18 @@ export default function CustomTab({ tab, editMode, onChangeLayout, onAddWidget, 
           {layout.map((w) => {
             const def = WIDGET_BY_ID[w.i];
             return (
-              <div key={w.i} className="relative overflow-hidden">
+              <div key={w.i} className={"relative overflow-hidden rounded-2xl " + (editMode ? "cursor-grab active:cursor-grabbing" : "")}>
                 {editMode && (
-                  <button onClick={() => onRemoveWidget(tab.id, w.i)}
-                    className="widget-remove absolute right-1 top-1 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-neutral-800/90 text-xs text-red-300 hover:bg-red-600 hover:text-white">
-                    ✕
-                  </button>
-                )}
-                {editMode && (
-                  <div className="pointer-events-none absolute inset-0 z-0 rounded-2xl ring-2 ring-dashed ring-accent/60/30" />
+                  <>
+                    <div className="edit-frame pointer-events-none absolute inset-0 z-[1] rounded-2xl ring-2 ring-dashed ring-accent/40" />
+                    <div className="pointer-events-none absolute left-1.5 top-1.5 z-10 flex h-5 w-5 items-center justify-center rounded-md bg-neutral-950/70 text-neutral-400 opacity-70">
+                      <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><circle cx="8" cy="6" r="1.6" /><circle cx="8" cy="12" r="1.6" /><circle cx="8" cy="18" r="1.6" /><circle cx="16" cy="6" r="1.6" /><circle cx="16" cy="12" r="1.6" /><circle cx="16" cy="18" r="1.6" /></svg>
+                    </div>
+                    <button onClick={() => onRemoveWidget(tab.id, w.i)} title="Remove widget"
+                      className="widget-remove absolute right-1.5 top-1.5 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-neutral-950/80 text-neutral-300 shadow-lg ring-1 ring-line/10 transition-colors hover:bg-red-600 hover:text-white">
+                      <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
+                    </button>
+                  </>
                 )}
                 <div className="h-full overflow-auto">{def.render()}</div>
               </div>

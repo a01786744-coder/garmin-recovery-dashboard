@@ -3,6 +3,21 @@
 All notable changes to the Garmin Recovery Dashboard. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/). Dates are YYYY-MM-DD.
 
+## [5.4.0] — 2026-07-19
+
+### Changed
+- **Tab customization redesigned to match the app.** Edit mode now tints the
+  tab bar with an accent frame, tabs become raised chips with crisp circular
+  hide/delete badges, and a keyboard-style hint toolbar explains the gestures.
+  The new-tab popover is a glass card with a live chip preview and a cleaner
+  icon picker. The widget picker (formerly the pixel-art "inventory") is now a
+  glass **Widget library** — accent category chips, search, and hover-lifting
+  slot tiles — and placed widgets get a drag handle, a proper remove button,
+  and an accent drag/resize frame (react-grid-layout themed to the accent).
+- Fixed several dead Tailwind classes in the customization UI
+  (`hover:bg-accent/90/10`, `ring-accent/60/30`) that silently did nothing, and
+  swapped remaining hardcoded emerald accents for the user's chosen accent.
+
 ## [5.3.0] — 2026-07-19
 
 ### Added
